@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
+import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_info_profs.dart';
 import 'package:fretes_go_freteiro/login/pages/email_verify_view.dart';
 import 'file:///C:/Users/Thiago/flutterProjectsII/fretes_go_freteiro/lib/login/cad_infos/trucker_infos_cad.dart';
 import 'package:fretes_go_freteiro/login/services/new_auth_service.dart';
@@ -25,11 +27,14 @@ class HomePageState extends State<HomePage> {
   bool loadingController=false;
 
   final _scaffoldKey = GlobalKey<ScaffoldState>(); //para snackbar
+  
+  UserModel userModelGLobal;
 
   @override
   Widget build(BuildContext context) {
     return ScopedModelDescendant<UserModel>(
       builder: (BuildContext context, Widget child, UserModel userModel) {
+        userModelGLobal = userModel;
         //isLoggedIn(userModel);
         return ScopedModelDescendant<NewAuthService>(
           builder: (BuildContext context, Widget child, NewAuthService newAuthService) {
@@ -192,38 +197,64 @@ class HomePageState extends State<HomePage> {
     _scaffoldKey.currentState.showSnackBar(snackBar);
   }
 
-}
+  void updateUserInfo(UserModel userModel, NewAuthService newAuthService, BuildContext context) async {
+    var _uid = userModel.Uid;
+    if(_uid !=""){
+      //ja foram carregados os dados.
+      print("valor uid é "+userModel.Uid);
+      userModelGLobal = userModel;
+    } else {
+      User user = newAuthService.getFirebaseUser;
+      userModel.updateUid(user.uid);
+      await FirestoreServices().getUserInfoFromCloudFirestore(userModel, () {_userIsOk(); }, () {_userNotReg(context); },);
 
-void updateUserInfo(UserModel userModel, NewAuthService newAuthService, BuildContext context) async {
-  var _uid = userModel.Uid;
-  if(_uid !=""){
-    //ja foram carregados os dados.
-    print("valor uid é "+userModel.Uid);
-  } else {
-    User user = newAuthService.getFirebaseUser;
-    userModel.updateUid(user.uid);
-    await FirestoreServices().getUserInfoFromCloudFirestore(userModel, () {_userIsOk(); }, () {_userNotReg(context); },);
+      //aqui precisa carregar o resto dos dados mas ainda n to mexendo no firestore
+      //precisamos carregar os dados do user. Inicialmente pegamos do firestore...depois talvez pegaremos do sharedprefs
+      //FirebaseUser firebaseUser = await _auth.currentUser();
+      //FirestoreServices().loadCurrentUserData(firebaseUser, _auth, userModel);
+    }
 
-    //aqui precisa carregar o resto dos dados mas ainda n to mexendo no firestore
-    //precisamos carregar os dados do user. Inicialmente pegamos do firestore...depois talvez pegaremos do sharedprefs
-    //FirebaseUser firebaseUser = await _auth.currentUser();
-    //FirestoreServices().loadCurrentUserData(firebaseUser, _auth, userModel);
+
+  }
+
+
+  Future<void> _userIsOk() async {
+    //user já fez o cadastro de freteiro
+    print('find user');
+    //agora vamos ver se já concluiu o cadastro
+    await FirestoreServices().getUserInfoCheckWhatIsMissing(userModelGLobal, () {goToPage2OfUserInfos(context); }, () {goToPage3OfUserInfos(context); });
+
+  }
+
+  void _userNotReg(BuildContext context){
+    //tem que fazer o cadastro de freteiro
+    print("falta cadastro");
+    goToPage1OfUserInfos(context);
+  }
+
+  void goToPage1OfUserInfos(BuildContext context){
+    Navigator.of(context).pop();
+    Navigator.push(context, MaterialPageRoute(
+        builder: (context) => TruckerInfosCadUserInfo()));
+  }
+
+  void goToPage2OfUserInfos(BuildContext context){
+    Navigator.of(context).pop();
+    Navigator.push(context, MaterialPageRoute(
+        builder: (context) => TruckerInfosCadInfoProfs()));
+  }
+
+  void goToPage3OfUserInfos(BuildContext context){
+    Navigator.of(context).pop();
+    Navigator.push(context, MaterialPageRoute(
+        builder: (context) => TruckerInfosCadCarInfo()));
   }
 
 }
 
-void _userIsOk(){
-  //user já fez o cadastro de freteiro
-  print('find user');
-}
 
-void _userNotReg(BuildContext context){
-  //tem que fazer o cadastro de freteiro
-  print("falta cadastro");
-  Navigator.of(context).pop();
-  Navigator.push(context, MaterialPageRoute(
-      builder: (context) => TruckerInfosCadUserInfo()));
-}
+
+
 
 
 

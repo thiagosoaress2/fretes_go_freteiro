@@ -97,9 +97,53 @@ class FirestoreServices {
     });
   }
 
+  void getUserInfoCheckWhatIsMissing(UserModel userModel, @required VoidCallback goToPage2(), @required VoidCallback goToPage3()) {
+
+    int exists;
+    FirebaseFirestore.instance
+        .collection('truckers')
+        .doc(userModel.Uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        exists = documentSnapshot['all_info_done'];
+        if(exists==1){
+          //user só preencheu a primeira página
+          goToPage2();
+        } else if(exists == 2){
+          goToPage3();
+        }
+      }
+    });
+  }
+
+  //retorna o latlong do usuario
+  void getUserLatLong(String uid, @required VoidCallback gotIt(), @required VoidCallback onFailureToGetLatLong()) {
+
+    String latlong;
+    FirebaseFirestore.instance
+        .collection('truckers')
+        .doc(uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        latlong = documentSnapshot['latlong'];
+        if(latlong != null){
+          //user só preencheu a primeira página
+          gotIt();
+        } else {
+          onFailureToGetLatLong();
+        }
+        return latlong;
+      } else {
+        return latlong;
+      }
+    });
+  }
+
   //metodo que salva a primeira parte das infos do freteiro
-  Future<void> saveUserInfo(UserModel userModel, double latitude, double longitude, String _name, String _phone,
-      String _address, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
+  Future<void> saveUserInfo(String uid, double latitude, double longitude, String _name, String _phone,
+      String _address, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
     CollectionReference users = FirebaseFirestore.instance.collection('truckers');
@@ -107,7 +151,7 @@ class FirestoreServices {
     double latlong = latitude + longitude;
 
     return users
-        .doc(userModel.Uid)
+        .doc(uid)
         .set({
       'name': _name,
       'phone': _phone,
@@ -115,6 +159,9 @@ class FirestoreServices {
       'latitude': latitude,
       'longitude': longitude,
       'latlong': latlong,
+      'image' : uri,
+      'all_info_done' : 1,
+      'aval' : 0,
     })
         .then((value) {
         onSucess();
@@ -123,44 +170,49 @@ class FirestoreServices {
 
   }
 
-  /*
-  Future<String> uploadFile(File _image, String path, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
-
-    String uriFinal;
-    StorageReference storageReference = FirebaseStorage.instance.ref().child(path);
-    //.child('freteiros_cnh/${Path.basename(_image.path)}}');
-    StorageUploadTask uploadTask = storageReference.putFile(_image);
-    await uploadTask.onComplete;
-    print('File Uploaded');
-    storageReference.getDownloadURL().then((fileURL) {
-
-        uriFinal = fileURL;
-        onSucess();
-        return uriFinal;
+  //metodo que salva a segunda página cnh
+  Future<void> saveUserCNHinfo(String uid, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
-    }).catchError((error) => onFailure());
-  }
-   */
+    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
 
-  //metodo que salva o final da primeira parte das infos do freteiro
-  Future<String> updateImageInFireStore(UserModel userModel, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
-
-    CollectionReference users = FirebaseFirestore.instance.collection(
-        'truckers');
-
-    try{
-      users
-          .doc(userModel.Uid)
-          .update({
-        'image' : uri,
-      }).then((value) => onSucess());  
-    } catch (e) {
-      onFailure();
-    }
-    
+    return users
+        .doc(uid)
+        .update({
+      'cnh' : uri,
+      'all_info_done' : 2,
+    })
+        .then((value) {
+      onSucess();
+    })
+        .catchError((error) => onFailure());
 
   }
+
+  //metodo que salva a ultima parte das infos do freteiro, a parte do carro
+  Future<void> saveUserCarInfo(String uid, String uri, String carro, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
+
+
+    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
+
+    CollectionReference placeForSearch = FirebaseFirestore.instance.collection(carro);
+
+
+    return users
+        .doc(uid)
+        .update({
+      'vehicle' : carro,
+      'vehicle_image' : uri,
+      'all_info_done' : 3,
+    })
+        .then((value) {
+      onSucess();
+    })
+        .catchError((error) => onFailure());
+
+
+  }
+
 
 }
 

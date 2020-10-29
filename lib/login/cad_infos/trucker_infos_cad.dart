@@ -54,33 +54,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
   UserModel userModelGlobal;
 
 
-  void _showCamera() async {
-    final cameras = await availableCameras();
-    final camera = cameras.first;
 
-    attachmentList.clear();
-
-    final pickedImage = await Navigator.push(
-        context,
-        MaterialPageRoute(
-            //builder: (context) => TakePicturePage(camera: camera)));
-            builder: (context) => TakePictureFromCnh(camera: camera)));
-    setState(() {
-
-      attachmentList.add(File(pickedImage));
-      _imageProfile = attachmentList.first;
-
-
-      //uploadFile();
-    });
-    // return result;
-  }
-
-  void _removeImage(File pickedFile) {
-    setState(() {
-      attachmentList.remove(pickedFile);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +138,13 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                         child: Container(
                           decoration: WidgetsConstructor().myBoxDecoration(Colors.blue, Colors.blue, 1.0, 3.0),
                           child: IconButton(icon: Icon(Icons.help_center, color: Colors.white,), onPressed: () {
+
+                            //fecha o teclado
+                            FocusScopeNode currentFocus = FocusScope.of(context);
+                            if (!currentFocus.hasPrimaryFocus) {
+                              //remove o foco (isto fecha o teclado)
+                              currentFocus.unfocus();
+                            }
 
                             findAddress(_adressController);
 
@@ -267,7 +248,6 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     );
   }
 
-
   void save(UserModel userModel, double latitude, double longitude, String nome, String phone,
   String adressFound) async {
 
@@ -275,88 +255,122 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
       isLoading=true;
     });
 
+    //salva a imagem
+    String path = 'profile/${userModelGlobal.Uid.toString()}';
+
+      StorageReference firebaseStorageRef =
+      FirebaseStorage.instance.ref().child(path);
+      StorageUploadTask uploadTask = firebaseStorageRef.putFile(_imageProfile);
+      StorageTaskSnapshot taskSnapshot = await uploadTask.onComplete;
+      taskSnapshot.ref.getDownloadURL().then(
+              (value) {
+
+            _uploadedImageProfileFileURL = value;
+            saveData(userModel.Uid, latitude, longitude, nome, phone,
+                adressFound);
+
+
+          });
+
+
+
+    /*
     await FirestoreServices().saveUserInfo(userModel, latitude, longitude, _apelidoController.text, _phoneController.text,
         adressFound, () {_onSucess1(); }, () {_onFailure1(); });
 
-    //obs: Os outros salvamentos serão feitos nos callbacks
-
-
-    //String uri = await FirestoreServices().uploadFile(_imageProfile, path);
-    //await FirestoreServices().updateImageInFireStore(userModel, uri);
+     */
 
   }
 
-  Future uploadFile() async {
-    StorageReference storageReference = FirebaseStorage.instance
-        .ref()
-        .child('freteiros_cnh'+'uid');
-        //.child('freteiros_cnh/${Path.basename(_image.path)}}');
-    StorageUploadTask uploadTask = storageReference.putFile(_imageProfile);
-    await uploadTask.onComplete;
-    print('File Uploaded');
-    storageReference.getDownloadURL().then((fileURL) {
-      setState(() {
-        _uploadedImageProfileFileURL = fileURL;
-        print(_uploadedImageProfileFileURL); //isto salva no bd do user
-      });
+  Future<void> saveData(String uid, double latitude, double longitude, String nome, String phone, String adressFound) async {
+
+    await FirestoreServices().saveUserInfo(uid, latitude, longitude, _apelidoController.text, _phoneController.text,
+        adressFound, _uploadedImageProfileFileURL, () {_onSucess1(); }, () {_onFailure1(); });
+  }
+
+  void _showCamera() async {
+    final cameras = await availableCameras();
+    final camera = cameras.first;
+
+    attachmentList.clear();
+
+    final pickedImage = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          //builder: (context) => TakePicturePage(camera: camera)));
+            builder: (context) => TakePicturePage(camera: camera)));
+    setState(() {
+
+      attachmentList.add(File(pickedImage));
+      _imageProfile = attachmentList.first;
+
+
+      //uploadFile();
+    });
+    // return result;
+  }
+
+  void _removeImage(File pickedFile) {
+    setState(() {
+      attachmentList.remove(pickedFile);
     });
   }
 
-
   void findAddress(TextEditingController controller) async {
 
-    String addressInformed = controller.text;
+    setState(() {
+      isLoading=true;
+    });
 
-    try{
+    String addressInformed = controller.text;
 
       var addresses = await Geocoder.local.findAddressesFromQuery(addressInformed);
       var first = addresses.first;
 
       if(addresses.length>=1){
+        /*
         setState(() async {
           adressFound = first.addressLine + " - " + first.adminArea;
-
-          //agora vamos pegar as coordenadas
-          await getTheCoordinates(adressFound);
-
-          //exibe uma popup informando que o endereço foi achado
-          Alert(
-            context: context,
-            type: AlertType.success,
-            title: "Encontramos!",
-            desc: "O endereço foi definido com sucesso. ",
-            buttons: [
-              DialogButton(
-                child: Text(
-                  "Ok",
-                  style: TextStyle(color: Colors.white, fontSize: 20),
-                ),
-                onPressed: () => Navigator.pop(context),
-                width: 120,
-              )
-            ],
-          ).show();
         });
-      } else {
+
+         */
+        adressFound = first.addressLine + " - " + first.adminArea;
+        //agora vamos pegar as coordenadas
+        await getTheCoordinates(adressFound);
+
+        //exibe uma popup informando que o endereço foi achado
+        Alert(
+          context: context,
+          type: AlertType.success,
+          title: "Encontramos!",
+          desc: "O endereço foi definido com sucesso. ",
+          buttons: [
+            DialogButton(
+              child: Text(
+                "Ok",
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
+              onPressed: () => Navigator.pop(context),
+              width: 120,
+            )
+          ],
+        ).show();
+
         setState(() {
+          adressFound = adressFound;
+          isLoading=false;
+        });
+
+      } else {
+
+        setState(() {
+          isLoading=false;
           adressFound = "nao";
         });
 
         _displaySnackBar(context, "Especifique melhor o endereço. Estamos encontrando multiplos resultados");
       }
 
-    } catch (e){
-
-      /*
-      setState(() {
-        adressFound="nao";
-        _displaySnackBar(context, "Formato de endereço inválido");
-
-      });
-
-       */
-
-    }
 
 
   }
@@ -446,57 +460,19 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
   void _onSucess1(){
 
     //chamar salvamentos 2
-    _displaySnackBar(context, "Aguarde, estamos salvando suas informações");
-    String path = 'profile/${userModelGlobal.Uid.toString()}';
-    //_uploadedImageProfileFileURL = FirestoreServices().uploadFile(_imageProfile, path, () {_onSucess2(); }, () {_onFailure2(); });
-   uploadImageToFirebase(_imageProfile, path, () {_onSucess2(); }, () {_onFailure2(); }) as String;
-  }
-
-  void _onFailure1(){
-    //encerrar loading e indicar erro
-    _displaySnackBar(context, "Ocorreu um erro. Nenhuma informação foi salva");
-    setState(() {
-      isLoading=false;
-    });
-  }
-
-  Future<void> _onSucess2() async {
-
-    setState(() {
-      isLoading=true;
-    });
-
-      //chamar salvamentos 2
-      _displaySnackBar(context, "Só mais um pouco...salvando as foto");
-      await FirestoreServices().updateImageInFireStore(userModelGlobal, _uploadedImageProfileFileURL.toString(), () {_onSucess3(); }, () {_onFailure3(); });
-
-
-  }
-
-  void _onFailure2(){
-    //encerrar loading e indicar erro
-    //_displaySnackBar(context, "Ocorreu um erro. A foto do perfil não foi salva. Verifique a sua conexão com a internet.");
-    setState(() {
-      isLoading=false;
-    });
-  }
-
-
-  void _onSucess3(){
-
-    //chamar salvamentos 2
-    _displaySnackBar(context, "Pronto! Vamos continuar");
+    _displaySnackBar(context, "Pronto!");
     setState(() {
       isLoading=false;
     });
     //abrir a proxima pagina
     Navigator.of(context).pop();
     Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadInfoProfs()));
+
   }
 
-  void _onFailure3(){
+  void _onFailure1(){
     //encerrar loading e indicar erro
-    //_displaySnackBar(context, "Ocorreu um erro. A foto do perfil não foi salva. Verifique a sua conexão com a internet.");
+    _displaySnackBar(context, "Ocorreu um erro. Nenhuma informação foi salva");
     setState(() {
       isLoading=false;
     });
@@ -516,385 +492,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     _scaffoldKey.currentState.showSnackBar(snackBar);
   }
 
-
-
-
-  Future uploadImageToFirebase(File _image, String path, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
-    //String fileName = basename(_imageFile.path);
-    StorageReference firebaseStorageRef =
-    FirebaseStorage.instance.ref().child(path);
-    StorageUploadTask uploadTask = firebaseStorageRef.putFile(_image);
-    StorageTaskSnapshot taskSnapshot = await uploadTask.onComplete;
-    taskSnapshot.ref.getDownloadURL().then(
-            (value) {
-
-              _uploadedImageProfileFileURL = value;
-              //onSucess();
-              _onSucess2();
-
-
-        }).catchError((onError) => onFailure());
-  }
-  
 }
 
 
-
-
-/*
-class TruckerInfos extends StatefulWidget {
-  @override
-  _TruckerInfosState createState() => _TruckerInfosState();
-}
-
-//https://stackoverflow.com/questions/61387641/flutter-taking-picture-with-camera
-
-//https://pub.dev/packages/image_picker
-
-//https://stackoverflow.com/questions/59599125/white-blank-screen-after-close-camera-in-flutter
-
-class _TruckerInfosState extends State<TruckerInfos> {
-
-  File imageFile = null;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    PermissionsService().checkCameraPermission();
-
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Firestore File Upload'),
-        ),
-        body: SafeArea(
-          top: true,
-          bottom: true,
-          child: Align(
-            alignment: Alignment.center,
-            child: Column(
-              children: <Widget>[
-                Container(
-                    width: MediaQuery.of(context).size.width * 0.35,
-                    height: MediaQuery.of(context).size.height * 0.2,
-                    margin: EdgeInsets.only(top: 20),
-                    decoration: BoxDecoration(
-                        color: Colors.grey,
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                            image: imageFile == null
-                                ? AssetImage('images/ic_business.png')
-                                : FileImage(imageFile),
-                            fit: BoxFit.cover))),
-                SizedBox(
-                  height: 10.0,
-                ),
-                RaisedButton(
-                    onPressed: () {
-                      _settingModalBottomSheet(context, 3);
-                    },
-                    child: Text("Take Photo")),
-              ],
-            ),
-          ),
-        ));
-  }
-
-
-
-  Future imageSelector(BuildContext context, String pickerType) async {
-
-    switch (pickerType) {
-      case "gallery":
-
-      /// GALLERY IMAGE PICKER
-        imageFile = await ImagePicker.pickImage(
-            source: ImageSource.gallery, imageQuality: 90);
-        break;
-
-      case "camera": // CAMERA CAPTURE CODE
-        imageFile = await ImagePicker.pickImage(
-            source: ImageSource.camera, imageQuality: 90);
-        break;
-    }
-
-    if (imageFile != null) {
-      print("You selected  image : " + imageFile.path);
-      setState(() {
-        debugPrint("SELECTED IMAGE PICK   $imageFile");
-      });
-    } else {
-      print("You have not taken image");
-    }
-  }
-
-  Future<Null> _pickImageFromCamera(BuildContext context, int index,  String pickerType) async {
-    File imageFile;
-    try {
-      imageFile = await ImagePicker.pickImage(source: ImageSource.camera)
-          .then((picture) {
-        return picture; // I found this .then necessary
-      });
-    } catch (error) {
-      print('error taking picture ${error.toString()}');
-    }
-    setState(() => this.imageFile = imageFile);
-  }
-
-  // Image picker
-  void _settingModalBottomSheet(context, int option) {
-    //if option 1 exibe as duas opções
-    //if option 2 exibe apenas galeria
-    //if option 3 exibe apenas camera
-    showModalBottomSheet(
-        context: context,
-        builder: (BuildContext bc) {
-          return Container(
-            child: new Wrap(
-              children: <Widget>[
-                option == 1 || option == 2 ?
-                new ListTile(
-                    title: new Text('Gallery'),
-                    onTap: () => {
-                      imageSelector(context, "gallery"),
-                      Navigator.pop(context),
-                    }) : Container(),
-                option == 1 || option == 3 ?
-                new ListTile(
-                  title: new Text('Camera'),
-                  onTap: () => {
-                    _pickImageFromCamera(context, 1, "camera")
-                    //imageSelector(context, "camera"),
-                    //Navigator.pop(context)
-                  },
-                ) : Container(),
-              ],
-            ),
-          );
-        });
-  }
-
-}
-
- */
-
-
-
-/*
-class TruckerInfos extends StatefulWidget {
-  @override
-  _TruckerInfosState createState() => _TruckerInfosState();
-}
-
-//https://stackoverflow.com/questions/61387641/flutter-taking-picture-with-camera
-
-//https://pub.dev/packages/image_picker
-
-class _TruckerInfosState extends State<TruckerInfos> {
-
-  File imageFile = null;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    PermissionsService().checkCameraPermission();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Firestore File Upload'),
-      ),
-      body: SafeArea(
-        top: true,
-        bottom: true,
-        child: Align(
-          alignment: Alignment.center,
-          child: Column(
-            children: <Widget>[
-              Container(
-                  width: MediaQuery.of(context).size.width * 0.35,
-                  height: MediaQuery.of(context).size.height * 0.2,
-                  margin: EdgeInsets.only(top: 20),
-                  decoration: BoxDecoration(
-                      color: Colors.grey,
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                          image: imageFile == null
-                              ? AssetImage('images/ic_business.png')
-                              : FileImage(imageFile),
-                          fit: BoxFit.cover))),
-              SizedBox(
-                height: 10.0,
-              ),
-              RaisedButton(
-                  onPressed: () {
-                    _settingModalBottomSheet(context, 3);
-                  },
-                  child: Text("Take Photo")),
-            ],
-          ),
-        ),
-      ));
-  }
-
-
-  Future imageSelector(BuildContext context, String pickerType) async {
-    switch (pickerType) {
-      case "gallery":
-
-      /// GALLERY IMAGE PICKER
-        imageFile = await ImagePicker.pickImage(
-            source: ImageSource.gallery, imageQuality: 90);
-        break;
-
-      case "camera": // CAMERA CAPTURE CODE
-        imageFile = await ImagePicker.pickImage(
-            source: ImageSource.camera, imageQuality: 90);
-        break;
-    }
-
-    if (imageFile != null) {
-      print("You selected  image : " + imageFile.path);
-      setState(() {
-        debugPrint("SELECTED IMAGE PICK   $imageFile");
-      });
-    } else {
-      print("You have not taken image");
-    }
-  }
-
-  // Image picker
-  void _settingModalBottomSheet(context, int option) {
-    //if option 1 exibe as duas opções
-    //if option 2 exibe apenas galeria
-    //if option 3 exibe apenas camera
-    showModalBottomSheet(
-        context: context,
-        builder: (BuildContext bc) {
-          return Container(
-            child: new Wrap(
-              children: <Widget>[
-                option == 1 || option == 2 ?
-                new ListTile(
-                    title: new Text('Gallery'),
-                    onTap: () => {
-                      imageSelector(context, "gallery"),
-                      Navigator.pop(context),
-                    }) : Container(),
-                option == 1 || option == 3 ?
-                new ListTile(
-                  title: new Text('Camera'),
-                  onTap: () => {
-                    imageSelector(context, "camera"),
-                    Navigator.pop(context)
-                  },
-                ) : Container(),
-              ],
-            ),
-          );
-        });
-  }
-
-}
-
-
- */
-
-
-
-/*
-class TruckerInfos extends StatefulWidget {
-  @override
-  _TruckerInfosState createState() => _TruckerInfosState();
-}
-
-class _TruckerInfosState extends State<TruckerInfos> {
-
-  File _image;
-  String _uploadedFileURL;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Firestore File Upload'),
-      ),
-      body: Center(
-        child: Column(
-          children: <Widget>[
-            Text('Selected Image'),
-            _image != null
-                ? Image.asset(
-              _image.path,
-              height: 150,
-            )
-                : Container(height: 150),
-            _image == null
-                ? RaisedButton(
-              child: Text('Choose File'),
-              onPressed: chooseFile,
-              color: Colors.cyan,
-            )
-                : Container(),
-            _image != null
-                ? RaisedButton(
-              child: Text('Upload File'),
-              onPressed: uploadFile,
-              color: Colors.cyan,
-            )
-                : Container(),
-            _image != null
-                ? RaisedButton(
-              child: Text('Clear Selection'),
-              onPressed: clearSelection,
-            )
-                : Container(),
-            Text('Uploaded Image'),
-            _uploadedFileURL != null
-                ? Image.network(
-              _uploadedFileURL,
-              height: 150,
-            )
-                : Container(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future chooseFile() async {
-    await ImagePicker.pickImage(source: ImageSource.gallery).then((image) {
-      setState(() {
-        _image = image;
-      });
-    });
-  }
-
-  Future uploadFile() async {
-    StorageReference storageReference = FirebaseStorage.instance
-        .ref()
-        .child('freteiros_cnh/${Path.basename(_image.path)}}');
-    StorageUploadTask uploadTask = storageReference.putFile(_image);
-    await uploadTask.onComplete;
-    print('File Uploaded');
-    storageReference.getDownloadURL().then((fileURL) {
-      setState(() {
-        _uploadedFileURL = fileURL;
-      });
-    });
-  }
-
-  void clearSelection(){
-    setState(() {
-      _image = null;
-      _uploadedFileURL = null;
-    });
-
-  }
-
-}
-
-
-
- */
 
