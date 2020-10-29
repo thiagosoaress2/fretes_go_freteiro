@@ -25,6 +25,8 @@ import 'package:scoped_model/scoped_model.dart';
 //pagina 2 é trucker_infos_cad_info_profs - info profissional como a cnh
 //pagina 3 é trucker_infos_cad_car_info - infos do carro (foto, placa)
 
+//https://pub.dev/packages/cached_network_image/install
+
 class TruckerInfosCadUserInfo extends StatefulWidget {
   @override
   _TruckerInfosCadUserInfoState createState() => _TruckerInfosCadUserInfoState();

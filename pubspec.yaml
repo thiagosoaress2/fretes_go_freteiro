@@ -43,6 +43,7 @@ dependencies:
   camera: ^0.5.8+2
   rflutter_alert: ^1.1.0
   geocoder: ^0.2.0
+  shared_preferences: ^0.5.12+2
 
 
 

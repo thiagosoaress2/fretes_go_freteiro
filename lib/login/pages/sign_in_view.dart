@@ -120,7 +120,7 @@ class _SignInViewState extends State<SignInView> {
                                     });
 
                                     //firebaseUser =  AuthService(mAuth).signIn(emailController.text, passwordController.text, userModel, () {_onSucess(); }, () {_onFailure(erro); });
-                                    newAuthService.SignInWithEmailAndPassword(emailController.text, passwordController.text, () {_onSucess(); }, () {_onFailure(); });
+                                    newAuthService.SignInWithEmailAndPassword(userModel, emailController.text, passwordController.text, () {_onSucess(); }, () {_onFailure(); });
 
                                   }
                                 },

@@ -161,7 +161,7 @@ class FirestoreServices {
       'latlong': latlong,
       'image' : uri,
       'all_info_done' : 1,
-      'aval' : 0,
+      'aval' : 0.0,
     })
         .then((value) {
         onSucess();
@@ -196,7 +196,6 @@ class FirestoreServices {
     CollectionReference users = FirebaseFirestore.instance.collection('truckers');
 
     CollectionReference placeForSearch = FirebaseFirestore.instance.collection(carro);
-
 
     return users
         .doc(uid)

@@ -8,6 +8,7 @@ import 'package:fretes_go_freteiro/login/services/new_auth_service.dart';
 import 'package:fretes_go_freteiro/menu/drawer.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
+import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
 import 'package:scoped_model/scoped_model.dart';
 
@@ -139,6 +140,10 @@ class HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
+  }
+
+  void loadInitialData(){
 
   }
 

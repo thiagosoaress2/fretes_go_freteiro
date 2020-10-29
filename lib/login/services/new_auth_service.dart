@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
+import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'package:scoped_model/scoped_model.dart';
 
 class NewAuthService extends Model {
@@ -23,13 +24,19 @@ class NewAuthService extends Model {
 
   get AuthStatus=>_isLoggedIn;
 
-  Future<void> SignInWithEmailAndPassword(String email, String password, @required VoidCallback onSuccess, @required VoidCallback onFailure()) async {
+  Future<void> SignInWithEmailAndPassword(UserModel userModel, String email, String password, @required VoidCallback onSuccess, @required VoidCallback onFailure()) async {
 
     try {
       UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password
       ).whenComplete(() {
+        User user = FirebaseAuth.instance.currentUser;
+
+        userModel.updateUid(user.uid);
+        userModel.updateEmail(user.email);
+        SharedPrefsUtils().saveBasicInfo(userModel);
+
         onSuccess();
         notifyListeners();
       });
@@ -86,6 +93,9 @@ class NewAuthService extends Model {
         //await FirestoreServices().saveUserData(userData, firebaseUser);
         FirestoreServices().createNewUser(name, email, user.uid);
         UserModel().updateUid(user.uid);
+        userModel.updateUid(user.uid);
+        userModel.updateEmail(user.email);
+        SharedPrefsUtils().saveBasicInfo(userModel);
         onSuccess();
       });
     } on FirebaseAuthException catch (e) {
