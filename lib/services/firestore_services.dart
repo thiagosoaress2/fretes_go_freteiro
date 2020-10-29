@@ -97,6 +97,7 @@ class FirestoreServices {
     });
   }
 
+  //metodo que salva a primeira parte das infos do freteiro
   Future<void> saveUserInfo(UserModel userModel, double latitude, double longitude, String _name, String _phone,
       String _address, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
@@ -121,7 +122,8 @@ class FirestoreServices {
         .catchError((error) => onFailure());
 
   }
-  
+
+  /*
   Future<String> uploadFile(File _image, String path, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
     String uriFinal;
@@ -139,7 +141,9 @@ class FirestoreServices {
 
     }).catchError((error) => onFailure());
   }
+   */
 
+  //metodo que salva o final da primeira parte das infos do freteiro
   Future<String> updateImageInFireStore(UserModel userModel, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
 
     CollectionReference users = FirebaseFirestore.instance.collection(

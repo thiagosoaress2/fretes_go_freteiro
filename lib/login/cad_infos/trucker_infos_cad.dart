@@ -465,14 +465,10 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     setState(() {
       isLoading=true;
     });
-    //espere um pouco pro upload da foto terminar
-    Future.delayed(Duration(seconds: 4)).then((_) async {
 
       //chamar salvamentos 2
       _displaySnackBar(context, "Só mais um pouco...salvando as foto");
       await FirestoreServices().updateImageInFireStore(userModelGlobal, _uploadedImageProfileFileURL.toString(), () {_onSucess3(); }, () {_onFailure3(); });
-
-    });
 
 
   }
@@ -533,7 +529,8 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
             (value) {
 
               _uploadedImageProfileFileURL = value;
-              onSucess();
+              //onSucess();
+              _onSucess2();
 
 
         }).catchError((onError) => onFailure());
