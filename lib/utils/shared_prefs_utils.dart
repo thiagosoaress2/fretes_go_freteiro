@@ -12,7 +12,7 @@ class SharedPrefsUtils {
 
   }
 
-  Future<UserModel> loadBasicInfoFromSharedPrefs(UserModel userModel) async {
+  Future<void> loadBasicInfoFromSharedPrefs(UserModel userModel) async {
     //MoveClass moveClass = MoveClass.empty();
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -43,10 +43,44 @@ class SharedPrefsUtils {
     await prefs.setString('apelido', userModel.Apelido);
     await prefs.setDouble('latlong', userModel.LatLong);
     await prefs.setString('phone', userModel.Phone);
+    await prefs.setString('address', userModel.Address);
     await prefs.setInt('all_info_done', 1);
 
   }
 
+  //para testes apenas
+  Future<void> deletePageOneInfo() async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    await prefs.setInt('all_info_done', 99);
+    await prefs.remove("image");
+    await prefs.remove("apelido");
+    await prefs.remove("latlong");
+    await prefs.remove("phone");
+    await prefs.remove("address");
+
+
+  }
+
+  Future<void> loadPageOneInfo(UserModel userModel) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String value = (prefs.getString('image').toString());
+    userModel.updateImage(value);
+    value = (prefs.getString('apelido').toString());
+    userModel.updateApelido(value);
+    double value2 = (prefs.getDouble('latlong'));
+    userModel.updateLatLoong(value2);
+    value = (prefs.getString('phone').toString());
+    userModel.updatePhone(value);
+    value = (prefs.getString('address').toString());
+    userModel.updateAddress(value);
+
+  }
+
+  //pagina 2 só tem a CNH. Como o user nunca vai precisa acessa-la, n vamos salvar no sharedprefs
   Future<void> savePageTwoInfo(UserModel userModel) async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -59,12 +93,23 @@ class SharedPrefsUtils {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('vehicle', userModel.Image);
-    await prefs.setString('apelido', userModel.Apelido);
-    await prefs.setDouble('latlong', userModel.LatLong);
-    await prefs.setString('phone', userModel.Phone);
+    await prefs.setString('vehicle', userModel.Vehicle);
+    await prefs.setString('vehicle_image', userModel.VehicleImage);
+    await prefs.setString('vehicle_placa', userModel.Placa);
     await prefs.setInt('all_info_done', 3);
 
+  }
+
+  Future<void>loadPageThreeInfo(UserModel userModel) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String value = (prefs.getString('vehicle').toString());
+    userModel.updateVehicle(value);
+    value = (prefs.getString('vehicle_image').toString());
+    userModel.updateVehicleImage(value);
+    value = (prefs.getString('vehicle_placa').toString());
+    userModel.updatePlaca(value);
   }
 
   Future<void> saveAval(UserModel userModel) async {
@@ -75,12 +120,19 @@ class SharedPrefsUtils {
 
   }
 
+  Future<String> getUid () async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String uid = (prefs.getString('uid'));
+    print(uid);
+    return uid;
+  }
+
   Future<bool> thereIsBasicInfoSavedInShared() async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String uid = 'nao';
     uid = (prefs.getString('uid'));
-    if(uid=='nao'){
+    if(uid==null){
       return false;
     } else {
       return true;
@@ -91,9 +143,9 @@ class SharedPrefsUtils {
   Future<bool> thereIsFireStoreInfoSavedInShared() async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    Double = 'latlong';
-    uid = (prefs.getString('uid'));
-    if(uid=='nao'){
+    double latlong;
+    latlong = (prefs.getDouble('latlong'));
+    if(latlong==null){
       return false;
     } else {
       return true;
@@ -101,112 +153,30 @@ class SharedPrefsUtils {
 
   }
 
-  /*
-  Future<void> saveMoveClassToShared(MoveClass moveClass) async {
+  Future<int> checkIfAdditionalInfoIsDone() async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('enderecoOrigem', moveClass.enderecoOrigem);
-    await prefs.setString('enderecoDestino', moveClass.enderecoDestino);
-    await prefs.setDouble('latEnderecoOrigem', moveClass.latEnderecoOrigem);
-    await prefs.setDouble('longEnderecoOrigem', moveClass.longEnderecoOrigem);
-    await prefs.setDouble('latEnderecoDestino', moveClass.latEnderecoDestino);
-    await prefs.setDouble('longEnderecoDestino', moveClass.longEnderecoDestino);
-    await prefs.setInt('ajudantes', moveClass.ajudantes);
-    await prefs.setString('carro', moveClass.carro);
-    await prefs.setDouble('preco', moveClass.preco);
-    await prefs.setString('ps', moveClass.ps);
-    await prefs.setBool('escada', moveClass.escada);
-    await prefs.setInt('lancesEscada', moveClass.lancesEscada);
-    await prefs.setString('freteiroId', moveClass.freteiroId);
-    await prefs.setString('nomeFreteiro', moveClass.nomeFreteiro);
-    await prefs.setString('dateSelected', moveClass.dateSelected);
-    await prefs.setString('timeSelected', moveClass.timeSelected);
-    await prefs.setString('userImage', moveClass.userImage);
-    await prefs.setString('freteiroImage', moveClass.freteiroImage);
-    await prefs.setString('situacao', moveClass.situacao);
-    await prefs.setString('userId', moveClass.userId);
 
-  }
-
-  Future<MoveClass> loadMoveClassFromSharedPrefs(MoveClass moveClass) async {
-    //MoveClass moveClass = MoveClass.empty();
-
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String endereco = (prefs.getString('enderecoOrigem').toString());
-    if(endereco!= null){ //se for diferente de null é pq tem coisa armazenada
-      moveClass.enderecoOrigem = (prefs.getString('enderecoOrigem'));
-      moveClass.enderecoDestino = (prefs.getString('enderecoDestino'));
-      moveClass.latEnderecoOrigem = (prefs.getDouble('latEnderecoOrigem'));
-      moveClass.longEnderecoOrigem = (prefs.getDouble('longEnderecoOrigem'));
-      moveClass.latEnderecoDestino = (prefs.getDouble('latEnderecoDestino'));
-      moveClass.longEnderecoDestino = (prefs.getDouble('longEnderecoDestino'));
-      moveClass.ajudantes = (prefs.getInt('ajudantes'));
-      moveClass.carro = (prefs.getString('carro'));
-      moveClass.preco = (prefs.getDouble('preco'));
-      moveClass.ps = (prefs.getString('ps'));
-      moveClass.escada = (prefs.getBool('escada'));
-      moveClass.lancesEscada = (prefs.getInt('lancesEscada'));
-      moveClass.freteiroId = (prefs.getString('freteiroId'));
-      moveClass.nomeFreteiro = (prefs.getString('nomeFreteiro'));
-      moveClass.dateSelected = (prefs.getString('dateSelected'));
-      moveClass.timeSelected = (prefs.getString('timeSelected'));
-      moveClass.userImage = (prefs.getString('userImage'));
-      moveClass.freteiroImage = (prefs.getString('freteiroImage'));
-      moveClass.situacao = (prefs.getString('situacao'));
-      moveClass.userId = (prefs.getString('userId'));
-    }
-
-    return moveClass;
-
-
-  }
-
-  //Aqui estes métodos são somente para a primeira página, onde salva a lista de itens do usuário
-  Future<void> saveListOfItemsInShared(List<ItemClass> itemsSelectedCart) async {
-
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int cont=0;
-
-    while(cont<itemsSelectedCart.length){
-      await prefs.setString('item_name'+cont.toString(), itemsSelectedCart[cont].name);
-      await prefs.setString('item_image'+cont.toString(), itemsSelectedCart[cont].image);
-      await prefs.setBool('item_single_person'+cont.toString(), itemsSelectedCart[cont].singlePerson);
-      await prefs.setDouble('item_volume'+cont.toString(), itemsSelectedCart[cont].volume);
-      await prefs.setDouble('item_weight'+cont.toString(), itemsSelectedCart[cont].weight);
-      cont++;
-      await prefs.setInt('item_list_size', cont);  //utilizar isto para saber o tamanho da lista
-    }
-  }
-
-  //obs: Este método precisa ser chamado antes de apagar a lista
-  Future<void> clearListInShared(int size) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    int cont=0;
-    while(cont<size){
-      await prefs.remove('item_name'+cont.toString());
-      await prefs.remove('item_image'+cont.toString());
-      await prefs.remove('item_single_person'+cont.toString());
-      await prefs.remove('item_volume'+cont.toString());
-      await prefs.remove('item_weight'+cont.toString());
-      await prefs.remove('item_list_size');
-    }
-
-  }
-
-  Future<bool> thereIsItemsSavedInShared() async {
-
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int counter = (prefs.getInt('item_list_size'));
-    if(counter==0 || counter==null){
-      return false;
+    int value = (prefs.getInt('all_info_done'));
+    if(value!=null){
+      return value;
     } else {
-      return true;
+      return 99;
     }
 
   }
 
+  Future<void> updateAllInfoDone(int value) async {
 
-   */
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('all_info_done', value);
+
+  }
+
+  Future<void> clearPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.clear();
+  }
+
 
 }

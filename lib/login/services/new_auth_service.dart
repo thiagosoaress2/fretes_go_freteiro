@@ -57,11 +57,29 @@ class NewAuthService extends Model {
     notifyListeners();
   }
 
-  void loadUser(){
+
+  void loadUser(UserModel userModel){
     _user = FirebaseAuth.instance.currentUser;
     _user.reload();
+    notifyListeners();
+    /*
+    userModel.updateUid(_user.uid);
+    userModel.updateEmail(_user.email);
+    SharedPrefsUtils().saveBasicInfo(userModel);
+
+     */
   }
   get getFirebaseUser => _user;
+
+  void loadUserBasicDataInSharedPrefs(UserModel userModel){
+    _user = FirebaseAuth.instance.currentUser;
+    _user.reload();
+    userModel.updateUid(_user.uid);
+    userModel.updateEmail(_user.email);
+    SharedPrefsUtils().saveBasicInfo(userModel);
+    notifyListeners();
+  }
+
 
   bool isUserEmailVerified(){
 

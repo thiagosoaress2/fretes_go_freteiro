@@ -8,6 +8,7 @@ import 'package:fretes_go_freteiro/camera_widgets/take_picture_page.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
+import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
@@ -28,6 +29,26 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
 
   bool isLoading=false;
 
+  bool needCheck=true;
+
+  bool alreadySentCnh=false;
+
+  UserModel userModelGlobal;
+
+  int pageDone;
+
+  Future<void> loadPageInfo(UserModel userModel) async {
+
+    pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+    if(pageDone!=99 && pageDone>1){ //se o dado existe e se esta página ja está carregada
+
+      setState(() {
+        alreadySentCnh = true;
+      });
+
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +58,11 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
 
     return ScopedModelDescendant<UserModel>(
       builder: (BuildContext context, Widget widget, UserModel userModel){
+
+        if(needCheck==true){
+          needCheck=false;
+          loadPageInfo(userModel);
+        }
 
         return Scaffold(
           key: _scaffoldKey,
@@ -119,6 +145,10 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
 
                   SizedBox(height: 20.0,),
 
+                  userModel.TruckerInfoOk == true || alreadySentCnh == true
+                  ? WidgetsConstructor().makeText("Você já enviou sua CNH para nós.", Colors.redAccent, 15.0, 10.0, 0.0, "center")
+                  : Container(),
+
                   isLoading == true
                       ? Center(child: CircularProgressIndicator())
                       : Container(),
@@ -128,9 +158,21 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
                   GestureDetector(
                     onTap: (){
 
-                      if(_imageCnh!=null){
-                        save(userModel.Uid);
+                      if(userModel.TruckerInfoOk == true || alreadySentCnh == true){
+
+                        //abrir a proxima pagina
+                        Navigator.of(context).pop();
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadCarInfo()));
+
+                      } else {
+
+                        if(_imageCnh!=null){
+                          save(userModel.Uid);
+                          userModelGlobal = userModel;
+                        }
+
                       }
+
 
                       /*
                   //aqui precisa salvar as coisas no bd e shared
@@ -188,7 +230,7 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
 
   Future<void> saveData(String uid) async {
 
-    await FirestoreServices().saveUserCNHinfo(uid, _uploadedImageCnhFileURL, () {_onSucess1(); }, () {_onFailure1(); });
+    await FirestoreServices().saveUserCNHinfo(uid, _uploadedImageCnhFileURL, pageDone ,() {_onSucess1(); }, () {_onFailure1(); });
   }
 
   void _onSucess1(){
@@ -198,6 +240,7 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
     setState(() {
       isLoading=false;
     });
+    SharedPrefsUtils().savePageTwoInfo(userModelGlobal);
     //abrir a proxima pagina
     Navigator.of(context).pop();
     Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadCarInfo()));

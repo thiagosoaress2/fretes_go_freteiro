@@ -127,7 +127,7 @@ class _EmailVerifyState extends State<EmailVerify> {
                                 onTap: () async {
 
                                   _displaySnackBar(context, "Verificando...", Colors.blue);
-                                  newAuthService.loadUser();
+                                  newAuthService.loadUser(userModel);
 
                                   if(newAuthService.isUserEmailVerified()==true){
                                     Navigator.of(context).pop();

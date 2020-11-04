@@ -4,6 +4,7 @@ import 'package:fretes_go_freteiro/login/pages/login_choose_view.dart';
 import 'file:///C:/Users/Thiago/flutterProjectsII/fretes_go_freteiro/lib/login/cad_infos/trucker_infos_cad.dart';
 import 'package:fretes_go_freteiro/login/services/new_auth_service.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
+import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
 import 'package:scoped_model/scoped_model.dart';
 
@@ -83,6 +84,7 @@ class _MenuDrawerState extends State<MenuDrawer> {
                             Navigator.of(context).pop();
                             newAuthService.SignOut();
                             newAuthService.updateAuthStatus(false);
+                            SharedPrefsUtils().clearPrefs();
 
                             /*
                         //LoginModel().signOut();
@@ -107,6 +109,22 @@ class _MenuDrawerState extends State<MenuDrawer> {
                           });
                         },
                         child: Container(margin: EdgeInsets.only(left: 20.0), child:_drawLine(Icons.exit_to_app, "Preencher info trucker", Theme.of(context).primaryColor, context),),
+
+                      ),
+
+                      InkWell( //toque com animação
+                        onTap: (){ //click
+                          setState(() {
+
+                            SharedPrefsUtils().clearPrefs();
+                            userModel.updateUid("");
+                            newAuthService.SignOut();
+                            newAuthService.updateAuthStatus(false);
+
+
+                          });
+                        },
+                        child: Container(margin: EdgeInsets.only(left: 20.0), child:_drawLine(Icons.exit_to_app, "Logout novo completo", Theme.of(context).primaryColor, context),),
 
                       ),
                     ]

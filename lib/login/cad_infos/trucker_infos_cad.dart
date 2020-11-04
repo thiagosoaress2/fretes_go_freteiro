@@ -8,6 +8,7 @@ import 'package:fretes_go_freteiro/camera_widgets/take_picture_page.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_info_profs.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
+import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'file:///C:/Users/Thiago/flutterProjectsII/fretes_go_freteiro/lib/login/cad_infos/trucker_infos_cad_car_info.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
 import 'package:geocoder/geocoder.dart';
@@ -55,8 +56,25 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
 
   UserModel userModelGlobal;
 
+  bool needCheck=true;
 
 
+  Future<void> loadPageInfo(UserModel userModel) async {
+
+    int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+    if(pageDone!=99){ //se o dado existe
+      await SharedPrefsUtils().loadPageOneInfo(userModel);
+
+      setState(() {
+        _apelidoController.text = userModel.Apelido.toString();
+        _phoneController.text = userModel.Phone.toString();
+        _adressController.text = userModel.Address.toString();
+        adressFound = userModel.Address.toString();
+        _uploadedImageProfileFileURL = userModel.Image.toString();
+      });
+
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +86,12 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
       builder: (BuildContext context, Widget widget, UserModel userModel){
 
         userModelGlobal = userModel;
+
+        if(needCheck==true){
+          needCheck=false;
+          loadPageInfo(userModel);
+        }
+
 
         print("uid");
         print(userModel.Uid);
@@ -139,7 +163,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                         width: widthPercent*0.15,
                         child: Container(
                           decoration: WidgetsConstructor().myBoxDecoration(Colors.blue, Colors.blue, 1.0, 3.0),
-                          child: IconButton(icon: Icon(Icons.help_center, color: Colors.white,), onPressed: () {
+                          child: IconButton(icon: Icon(Icons.search, color: Colors.white,), onPressed: () {
 
                             //fecha o teclado
                             FocusScopeNode currentFocus = FocusScope.of(context);
@@ -179,7 +203,17 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                         onTap: (){
                           _settingModalBottomSheet(context, 1);
                         },
-                        child: _imageProfile != null
+                        child: _uploadedImageProfileFileURL != null && _imageProfile==null //nesta hipótese só se estiver lendo do shared inicialmente
+                            ? Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                  image: NetworkImage(userModel.Image),
+                                  fit: BoxFit.fill)),
+                        )
+                            : _imageProfile != null
                             ? Container(
                           width: 150,
                           height: 150,
@@ -189,8 +223,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                                   image: FileImage(_imageProfile), // picked file
                                   fit: BoxFit.fill)),
                         )
-                            :
-                        Image.asset("images/avatar.png", width: 150, height: 150,),
+                            : Image.asset("images/avatar.png", width: 150, height: 150,),
                       ),
 
                       SizedBox(width: widthPercent*0.05,),
@@ -210,7 +243,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                   SizedBox(height: 50.0,),
 
                   GestureDetector(
-                    onTap: (){
+                    onTap: () async {
 
                       if(_apelidoController.text.isEmpty){
                         _displaySnackBar(context, "Informe o nome ou apelido que deseja usar.");
@@ -218,13 +251,48 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                         _displaySnackBar(context, "Informe o telefone com whatsapp que deseja usar");
                       } else if(adressFound == "" || adressFound == "nao"){
                         _displaySnackBar(context, "Informe um endereço válido");
-                      } else if(_imageProfile == null){
+                      } else if(_imageProfile == null && _uploadedImageProfileFileURL == null){
                         _displaySnackBar(context, "Precisamos de uma foto sua");
+                      } else if(_adressController.text != adressFound && latitude == null){
+                        _displaySnackBar(context, "Valide o endereço clicando no botão de busca de endereço antes de prosseguir");
                       } else {
-                        //salvar
-                         save(userModel, latitude, longitude, _apelidoController.text, _phoneController.text,
-                             adressFound);
+
+
+                        //ver se mudou algo
+                        int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+                        if(pageDone==1 || pageDone==2 || pageDone==3){
+                          if(_apelidoController.text == userModel.Apelido && _phoneController.text == userModel.Phone && adressFound == userModel.Address && _uploadedImageProfileFileURL == userModel.Image) {
+
+                            //vai pra proxima página sem salvar nada
+                            //abrir a proxima pagina
+                            Navigator.of(context).pop();
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadInfoProfs()));
+
+                          }
+                        } else {
+
+                          //caso tenha algo para atualizar
+                          double latlong;
+                          if(latitude==null && longitude==null){
+                            latlong = userModel.LatLong;
+                          } else {
+                            latlong = latitude+longitude;
+                          }
+                          userModel.updateLatLoong(latlong);
+                          userModel.updateApelido(_apelidoController.text);
+                          userModel.updatePhone(_phoneController.text);
+                          userModel.updateAddress(adressFound);
+
+                          //salvar
+                          save(userModel, latitude, longitude, _apelidoController.text, _phoneController.text,
+                              adressFound);
+
+
+                        }
+
+
                       }
+
 
                       //aqui precisa salvar as coisas no bd e shared
                       /*
@@ -250,15 +318,23 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     );
   }
 
-  void save(UserModel userModel, double latitude, double longitude, String nome, String phone,
+  void save(UserModel userModel, double latitude, double longitude, String apelido, String phone,
   String adressFound) async {
 
     setState(() {
       isLoading=true;
     });
 
-    //salva a imagem
-    String path = 'profile/${userModelGlobal.Uid.toString()}';
+    if(_imageProfile==null){
+      //esta updatando
+      saveData(userModel.Uid, latitude, longitude, apelido, phone,
+          adressFound);
+      userModel.updateImage(_uploadedImageProfileFileURL);
+
+    } else {
+
+      //salva a imagem
+      String path = 'profile/${userModelGlobal.Uid.toString()}';
 
       StorageReference firebaseStorageRef =
       FirebaseStorage.instance.ref().child(path);
@@ -268,12 +344,19 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
               (value) {
 
             _uploadedImageProfileFileURL = value;
-            saveData(userModel.Uid, latitude, longitude, nome, phone,
+            saveData(userModel.Uid, latitude, longitude, apelido, phone,
                 adressFound);
+            userModel.updateImage(_uploadedImageProfileFileURL);
+
+            //salva no shared.
+            SharedPrefsUtils().savePageOneInfo(userModel);
 
 
           });
 
+
+
+    }
 
 
     /*
@@ -284,7 +367,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
 
   }
 
-  Future<void> saveData(String uid, double latitude, double longitude, String nome, String phone, String adressFound) async {
+  Future<void> saveData(String uid, double latitude, double longitude, String apelido, String phone, String adressFound) async {
 
     await FirestoreServices().saveUserInfo(uid, latitude, longitude, _apelidoController.text, _phoneController.text,
         adressFound, _uploadedImageProfileFileURL, () {_onSucess1(); }, () {_onFailure1(); });
@@ -320,58 +403,81 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
 
   void findAddress(TextEditingController controller) async {
 
-    setState(() {
-      isLoading=true;
-    });
 
-    String addressInformed = controller.text;
+    if(
+    controller.text.toString().contains("0") || controller.text.toString().contains("1") || controller.text.toString().contains("2") ||
+        controller.text.toString().contains("3") || controller.text.toString().contains("4") || controller.text.toString().contains("5") ||
+        controller.text.toString().contains("6") || controller.text.toString().contains("7") || controller.text.toString().contains("8") ||
+        controller.text.toString().contains("9")) {
+
+
+      setState(() {
+        isLoading=true;
+      });
+
+      String addressInformed = controller.text;
 
       var addresses = await Geocoder.local.findAddressesFromQuery(addressInformed);
-      var first = addresses.first;
 
-      if(addresses.length>=1){
-        /*
-        setState(() async {
+      if(addresses.length!=0){
+        var first = addresses.first;
+
+        if(addresses.length>=1){
+
           adressFound = first.addressLine + " - " + first.adminArea;
-        });
+          //agora vamos pegar as coordenadas
+          await getTheCoordinates(adressFound);
 
-         */
-        adressFound = first.addressLine + " - " + first.adminArea;
-        //agora vamos pegar as coordenadas
-        await getTheCoordinates(adressFound);
+          //exibe uma popup informando que o endereço foi achado
+          Alert(
+            context: context,
+            type: AlertType.success,
+            title: "Encontramos!",
+            desc: "O endereço foi definido com sucesso. ",
+            buttons: [
+              DialogButton(
+                child: Text(
+                  "Ok",
+                  style: TextStyle(color: Colors.white, fontSize: 20),
+                ),
+                onPressed: () => Navigator.pop(context),
+                width: 120,
+              )
+            ],
+          ).show();
 
-        //exibe uma popup informando que o endereço foi achado
-        Alert(
-          context: context,
-          type: AlertType.success,
-          title: "Encontramos!",
-          desc: "O endereço foi definido com sucesso. ",
-          buttons: [
-            DialogButton(
-              child: Text(
-                "Ok",
-                style: TextStyle(color: Colors.white, fontSize: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-              width: 120,
-            )
-          ],
-        ).show();
+          setState(() {
+            adressFound = adressFound;
+            isLoading=false;
+          });
 
-        setState(() {
-          adressFound = adressFound;
-          isLoading=false;
-        });
+        } else {
 
+          setState(() {
+            isLoading=false;
+            adressFound = "nao";
+          });
+
+          _displaySnackBar(context, "Especifique melhor o endereço. Estamos encontrando multiplos resultados");
+        }
       } else {
 
         setState(() {
           isLoading=false;
           adressFound = "nao";
         });
-
-        _displaySnackBar(context, "Especifique melhor o endereço. Estamos encontrando multiplos resultados");
+        _displaySnackBar(context, "Endereço inválido");
       }
+
+
+
+    } else {
+      _displaySnackBar(context, "Informe o número da residência");
+    }
+
+
+
+
 
 
 
@@ -466,6 +572,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     setState(() {
       isLoading=false;
     });
+
     //abrir a proxima pagina
     Navigator.of(context).pop();
     Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadInfoProfs()));
