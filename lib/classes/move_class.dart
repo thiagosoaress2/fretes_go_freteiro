@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:fretes_go_freteiro/services/distance_calculation_service.dart';
 import 'package:geocoder/geocoder.dart';
 
 import 'item_class.dart';
@@ -62,6 +63,27 @@ class MoveClass {
     moveclass.longEnderecoDestino = first2.coordinates.longitude;
 
     return moveclass;
+
+  }
+
+  Future<double> getTheCoordinatesFromTwoAddress(@required String addressOrigem, @required String adressDestino) async {
+
+
+    var addresses = await Geocoder.local.findAddressesFromQuery(addressOrigem);
+    var adresses2 = await Geocoder.local.findAddressesFromQuery(adressDestino);
+    double latO1, latD1;
+    double longO1, longD2;
+
+    var first = addresses.first;
+    latO1 = first.coordinates.latitude;
+    longO1 = first.coordinates.longitude;
+
+    var first2 = adresses2.first;
+    latD1 = first2.coordinates.latitude;
+    longD2 = first2.coordinates.longitude;
+
+    double distance = DistanceLatLongCalculation().calculateDistance(latO1, longO1, latD1, longD2);
+    return distance;
 
   }
 
@@ -142,7 +164,9 @@ class MoveClass {
     String formatedSit="nao";
 
     if(sit == "aguardando_freteiro"){
-      formatedSit = "Aguardando confirmação do profissional";
+      formatedSit = "Aguardando sua confirmação";
+    } else if(sit == 'accepted'){
+      formatedSit = 'Serviço agendado';
     }
     return formatedSit;
   }

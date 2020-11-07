@@ -58,7 +58,7 @@ class NewAuthService extends Model {
   }
 
 
-  void loadUser(UserModel userModel){
+  void loadUser(){
     _user = FirebaseAuth.instance.currentUser;
     _user.reload();
     notifyListeners();

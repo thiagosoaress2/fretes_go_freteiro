@@ -5,64 +5,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
-
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 
-/*
-class FirestoreServices {
-
- UserModel userModel;
-
- final CollectionReference _usersCollectionReference = Firestore.instance.collection("users");
-
- Future<Null> saveUserData(Map<String, dynamic> userData, FirebaseUser firebaseUser) async {
-   await Firestore.instance.collection("users").document(firebaseUser.uid).setData(userData);
- }
-
- Future loadCurrentUserData(FirebaseUser firebaseUser, FirebaseAuth _auth, UserModel userModel) async {
-
-   if(firebaseUser == null){  //verifica se tem acesso a informação do user
-     firebaseUser = await _auth.currentUser(); //se for nulo, vai tentaar pegar
-     if (firebaseUser != null){ //verifica novamente
-       if(userModel.Uid == ""){
-         DocumentSnapshot docUser = await Firestore.instance.collection("users").document(firebaseUser.uid).get();
-         //userData = docUser.data;
-         userModel.updateUid(firebaseUser.uid);
-         userModel.updateEmail(firebaseUser.email);
-         userModel.updateFullName(docUser.data['name'].toString());
-
-         print("printing userclass info "+userModel.Uid);
-
-       }
-     }
-   } else {
-     if(userModel.Uid == ""){
-       DocumentSnapshot docUser = await Firestore.instance.collection("users").document(firebaseUser.uid).get().then((docUser) {
-
-         userModel.updateUid(firebaseUser.uid);
-         userModel.updateEmail(firebaseUser.email);
-         userModel.updateFullName(docUser.data['name'].toString());
-
-         print("printing userclass info "+userModel.Uid);
-         print("nome do user é "+userModel.FullName);
-       });
-     }
-   }
-
- }
-
-
-}
-
-
-*/
 
 class FirestoreServices {
 
   UserModel userModel;
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  final String agendamentosPath = 'agendamentos_aguardando';
 
   Future<void> createNewUser(String name, String email, String uid) {
     // Call the user's CollectionReference to add a new user
@@ -347,6 +300,57 @@ class FirestoreServices {
           .catchError((onError)=> onFailure());
 
     }
+  }
+
+  Future<void> confirmJobAceptance(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
+
+    CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    return users
+        .doc(moveId)
+        .update({
+      'situacao' : "accepted",
+    }).then((value) {
+      onSucess();
+    }).catchError((error) => onFail());
+
+  }
+
+  Future<void> confirmJobDeny(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
+
+    CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    return users
+        .doc(moveId)
+        .update({
+      'situacao' : "deny",
+      'id_freteiro' : null,
+      'nome_freteiro' : null,
+
+    }).then((value) {
+      onSucess();
+    }).catchError((error) => onFail());
+  }
+
+  Future<void> updateAlertView(id){
+
+    CollectionReference alert = FirebaseFirestore.instance.collection(agendamentosPath);
+    return alert
+        .doc(id)
+        .update({
+      'alert_saw' : true,
+    });
+
+  }
+
+  Future<void> alertSetUserAlert(id){
+    CollectionReference alert = FirebaseFirestore.instance.collection(agendamentosPath);
+    return alert
+        .doc(id)
+        .update({
+      'alert_saw' : false,
+      'alert' : 'user',
+    });
   }
 
 

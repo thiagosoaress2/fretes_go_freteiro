@@ -9,6 +9,7 @@ class SharedPrefsUtils {
 
     await prefs.setString('uid', userModel.Uid);
     await prefs.setString('email', userModel.Email);
+    await prefs.setString('all_info_done', userModel.AllInfoIsDone);
 
   }
 
@@ -21,6 +22,8 @@ class SharedPrefsUtils {
     userModel.updateUid(value);
     value = (prefs.getString('email').toString());
     userModel.updateEmail(value);
+    int value2 = (prefs.getInt('all_info_done'));
+    userModel.updateAllInfoDone(value2);
 
   }
 

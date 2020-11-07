@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_info_profs.dart';
@@ -34,9 +35,18 @@ class HomePageState extends State<HomePage> {
   bool needCheck=true;
 
   bool showJobPopUp=false;
+  bool showJobConfirmationPopup=false;
+  bool showJobDeclinationPopup=false;
+
+  double heightPercent;
+  double widthPercent;
 
   Map mapSelected;
   int indexSelected;
+
+  double distance;
+
+  bool isLoading=false;
 
 
 
@@ -45,6 +55,10 @@ class HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     checkFBconnection();
+    /* LOGIN PATH
+    Is user logged in? yes ---------is email verified? yes ----------- there is file in sharedPrefs? yes ----load it then check if need cad infos trucker? yes --- go cad pages
+                       no---do nothing                --no, go verify                                no ------load it from Firestore---then check if need cad infos trucker? yes ----go cad pages
+     */
 
   }
 
@@ -57,6 +71,16 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+
+    heightPercent = MediaQuery
+        .of(context)
+        .size
+        .height;
+    widthPercent = MediaQuery
+        .of(context)
+        .size
+        .width;
+
     return ScopedModelDescendant<UserModel>(
       builder: (BuildContext context, Widget child, UserModel userModel) {
         userModelGLobal = userModel;
@@ -65,6 +89,7 @@ class HomePageState extends State<HomePage> {
           builder: (BuildContext context, Widget child, NewAuthService newAuthService) {
 
 
+            Query query;
 
             if(needCheck==true){
               needCheck=false;
@@ -74,8 +99,7 @@ class HomePageState extends State<HomePage> {
               }
             }
 
-            Query query = FirebaseFirestore.instance.collection("agendamentos_aguardando").where('id_freteiro', isEqualTo: userModel.Uid);
-
+            query = FirebaseFirestore.instance.collection("agendamentos_aguardando").where('id_freteiro', isEqualTo: userModel.Uid);
 
             return Scaffold(
                 key: _scaffoldKey,
@@ -129,11 +153,20 @@ class HomePageState extends State<HomePage> {
                                           onTap: (){
 
                                             setState(() {
+                                              isLoading=true;
+                                            });
 
-                                              indexSelected = index;
-                                              mapSelected = map;
+                                            if(map['alert'].toString().contains('trucker')  && map['alert_saw']== false){
+                                              FirestoreServices().updateAlertView(map['moveId']); //coloca como visto e remove o alerta
+                                            }
+
+                                            indexSelected = index;
+                                            mapSelected = map;
+                                            calculateDistance();
+
+                                            setState(() {
                                               showJobPopUp=true;
-
+                                              isLoading=false;
                                             });
 
 
@@ -159,7 +192,20 @@ class HomePageState extends State<HomePage> {
 
                       child: JobPopUp(),
                     )
-                        : Container(),
+                    : Container(),
+
+                    showJobConfirmationPopup==true
+                    ? popUpConfirmJob()
+                    : Container(),
+
+                    showJobDeclinationPopup==true
+                    ? popUpDeclinationJob()
+                    : Container(),
+
+                    isLoading==true
+                    ? Center(child: CircularProgressIndicator(),)
+                    : Container(),
+
                   ],
                 )
             );
@@ -171,47 +217,87 @@ class HomePageState extends State<HomePage> {
 
   Widget ListLine(Map map){
 
-    return Container(
-      decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.blue, 2.0, 3.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              WidgetsConstructor().makeText("Situação: ", Colors.blue, 15.0, 10.0, 5.0, null),
-              WidgetsConstructor().makeText("Aqui vai ser criado", Colors.black, 15.0, 10.0, 5.0, null),
-            ],
-          ),
-          Row(
-            children: [
-              WidgetsConstructor().makeText("Origem: ", Colors.black, 15.0, 0.0, 5.0, null),
-              WidgetsConstructor().makeText(map['endereco_origem'], Colors.black, 15.0, 0.0, 5.0, null),
-            ],
-          ),
-          Row(
-            children: [
-              WidgetsConstructor().makeText("Destino: ", Colors.black, 15.0, 0.0, 5.0, null),
-              WidgetsConstructor().makeText(map['endereco_destino'], Colors.black, 15.0, 0.0, 5.0, null),
-            ],
-          ),
-          Row(
-            children: [
-              WidgetsConstructor().makeText("Ajudantes: ", Colors.black, 15.0, 0.0, 5.0, null),
-              WidgetsConstructor().makeText(map['ajudantes'].toString(), Colors.black, 15.0, 0.0, 5.0, null),
-            ],
-          ),
-          Row(
-            children: [
-              WidgetsConstructor().makeText("Valor: ", Colors.black, 15.0, 0.0, 5.0, null),
-              WidgetsConstructor().makeText("R\$ "+map['valor'].toStringAsFixed(2), Colors.black, 15.0, 0.0, 5.0, null),
-            ],
-          ),
+    return Padding(padding: EdgeInsets.all(10.0),
+    child: Container(
+        decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.blue, 2.0, 3.0),
+        child: Column(
+          children: [
+            //icone notificação
+            map['alert'].toString().contains('trucker')  && map['alert_saw']== false
+            ? Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(
+                  Icons.add_alert,
+                  color: Colors.pink,
+                  size: 24.0,
+                  semanticLabel: 'Novidades',
+                ),
+              ],
+            ) : Container(),
 
-        ],
-      )
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Situação: ", Colors.blue, 15.0, 10.0, 5.0, null),
+                WidgetsConstructor().makeText(MoveClass().formatSituationToHuman(map['situacao']), Colors.black, 15.0, 10.0, 5.0, null),
+              ],
+            ),
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Origem: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText(map['endereco_origem'], Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Destino: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText(map['endereco_destino'], Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Ajudantes: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText(map['ajudantes'].toString(), Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Data: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText(map['selectedDate'], Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Horário: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText(map['selectedTime'], Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+
+            Row(
+              children: [
+                WidgetsConstructor().makeText("Valor: ", Colors.black, 15.0, 0.0, 5.0, null),
+                WidgetsConstructor().makeText("R\$ "+map['valor'].toStringAsFixed(2), Colors.black, 15.0, 0.0, 5.0, null),
+              ],
+            ),
+            map['situacao']=='accepted'
+            ? WidgetsConstructor().makeText("Você aceitou este serviço", Colors.blue, 15.0, 10.0, 5.0, null)
+            : Container(),
+
+            SizedBox(height: 15.0,),
+            
+            map['situacao'] == 'accepted'
+            ? WidgetsConstructor().makeButton(Colors.green, Colors.white, widthPercent*0.75, 60.0, 2.0, 6.0, "Enviar mensagem", Colors.white, 17.0)
+            : Container(),
+            SizedBox(height: 5.0,),
+
+          ],
+        )
+    ),
     );
   }
 
-  Widget JobPopUp(){
+  Widget JobPopUp() {
 
     return Padding(
       padding: EdgeInsets.all(10.0),
@@ -224,6 +310,8 @@ class HomePageState extends State<HomePage> {
                 onPressed: (){
                   setState(() {
                     showJobPopUp=false;
+                    showJobConfirmationPopup=false;
+                    showJobDeclinationPopup=false;
                   });
                 },
               )
@@ -236,7 +324,49 @@ class HomePageState extends State<HomePage> {
             ],
           ),
           SizedBox(height: 20.0,),
-          Text(mapSelected['id_freteiro']),
+          Text('Origem: '+mapSelected['endereco_origem']),
+          Text('Destino: '+mapSelected['endereco_destino']),
+          distance != null
+              ?Text('Distancia: '+distance.toStringAsFixed(2)+"km")
+              :Text('Calculando'),
+          SizedBox(height: 20.0,),
+          Text('Ajudantes requisitados: '+mapSelected['ajudantes'].toString()),
+          Text('Data: '+mapSelected['selectedDate'].toString()),
+          Text('Horário: '+mapSelected['selectedTime'].toString()),
+          Text('Observações : '+mapSelected['ps']),
+          mapSelected['escada'] == true
+          ? Text('Lances de escada: '+mapSelected['lances_escada'].toString())
+          : Container(),
+          Text('Valor: R\$'+mapSelected['valor'].toStringAsFixed(2)),
+          SizedBox(height: 20.0,),
+          //botoes
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              GestureDetector(
+                onTap: (){
+                  setState(() {
+                    showJobDeclinationPopup=true;
+                  });
+                },
+                child: WidgetsConstructor().makeButton(Colors.redAccent, Colors.white, mapSelected['situacao'] == 'accepted' ? widthPercent*0.8 : widthPercent*0.4, 60.0, 2.0, 5.0, mapSelected['situacao'] == 'accepted' ? "Desistir" : "Negar", Colors.white, 17.0),
+              ),
+
+              GestureDetector(
+                onTap: (){
+                  setState(() {
+                    showJobConfirmationPopup=true;
+                  });
+                },
+                child:
+                mapSelected['situacao'] == 'accepted' //se tiver aceitado este botão n aparece mais, apenas o de cancelar
+                ? Container()
+                : WidgetsConstructor().makeButton(Colors.blue, Colors.white, widthPercent*0.4, 60.0, 2.0, 5.0, "Aceitar", Colors.white, 17.0),
+              ),
+
+
+            ],
+          )
 
         ],
       ),
@@ -244,6 +374,182 @@ class HomePageState extends State<HomePage> {
 
   }
 
+  Widget popUpConfirmJob(){
+
+    return Container(
+      height: heightPercent,
+      width: widthPercent,
+      color: Colors.white,
+      child: Center(
+        child: Container(
+          decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.blue, 2.0, 3.0),
+          height: heightPercent*0.65,
+          width: widthPercent*0.8,
+          child: Padding(
+            padding: EdgeInsets.all(10.0),
+            child: Column(
+              children: [
+                //btn close
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    CloseButton(
+                      onPressed: (){
+                        setState(() {
+                          showJobConfirmationPopup=false;
+                        });
+                      },
+                    )
+                  ],
+                ),
+                SizedBox(height: 30.0,),
+                WidgetsConstructor().makeText("Atenção", Colors.blue, 18.0, 0.0, 25.0, "center"),
+                WidgetsConstructor().makeText("Você confirma que deseja aceitar este serviço nestas condições?", Colors.black, 15.0, 0.0, 25.0, "center"),
+                SizedBox(height: heightPercent*0.2,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: (){
+                        setState(() {
+                          isLoading=true;
+                        });
+
+                        ConfirmJob();
+
+                      },
+                      child: WidgetsConstructor().makeButton(Colors.blue, Colors.white, widthPercent*0.6, 60.0, 2.0, 5.0, "Pegar serviço", Colors.white, 18.0),
+                    )
+
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget popUpDeclinationJob(){
+
+    return Container(
+      height: heightPercent,
+      width: widthPercent,
+      color: Colors.white,
+      child: Center(
+        child: Container(
+          decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.red, 2.0, 3.0),
+          height: heightPercent*0.65,
+          width: widthPercent*0.8,
+          child: Padding(
+            padding: EdgeInsets.all(10.0),
+            child: Column(
+              children: [
+                //btn close
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    CloseButton(
+                      onPressed: (){
+                        setState(() {
+                          showJobDeclinationPopup=false;
+                        });
+                      },
+                    )
+                  ],
+                ),
+                SizedBox(height: 30.0,),
+                WidgetsConstructor().makeText("Atenção", Colors.red, 18.0, 0.0, 25.0, "center"),
+                WidgetsConstructor().makeText("Você tem certeza que deseja negar este serviço?", Colors.black, 15.0, 0.0, 25.0, "center"),
+                SizedBox(height: heightPercent*0.2,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: (){
+
+                        DenyJob();
+
+                      },
+                      child: WidgetsConstructor().makeButton(Colors.red, Colors.white, widthPercent*0.6, 60.0, 2.0, 5.0, "Rejeitar serviço", Colors.white, 18.0),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+  }
+
+  void ConfirmJob() async {
+
+    await FirestoreServices().confirmJobAceptance(mapSelected['id_contratante'],() {_onSucessConfirmJob();}, () {_onFailConfirmJob();});
+    mapSelected['situacao']='accepted';
+  }
+
+  void _onSucessConfirmJob(){
+    FirestoreServices().alertSetUserAlert(mapSelected['moveId']);
+    setState(() {
+      isLoading=false;
+      showJobConfirmationPopup=false;
+      showJobPopUp=false;
+    });
+    _displaySnackBar(context, "Pronto. Esta mudança está agendada.");
+  }
+
+  void _onFailConfirmJob(){
+    setState(() {
+      isLoading=false;
+    });
+    _displaySnackBar(context, "Ocorreu um erro. Tente novamente");
+  }
+
+  void DenyJob() async {
+
+    await FirestoreServices().confirmJobDeny(mapSelected['moveId'], () {_onSucessDenyJob();}, () {_onFailureDenyJob();});
+
+  }
+
+  void _onSucessDenyJob(){
+
+    FirestoreServices().alertSetUserAlert(mapSelected['moveId']);
+    mapSelected['situacao']='deny';
+    mapSelected['id_freteiro']=null;
+    mapSelected['nome_freteiro']=null;
+
+      setState(() {
+        isLoading=false;
+        showJobDeclinationPopup=false;
+        showJobPopUp=false;
+      });
+      _displaySnackBar(context, "Você rejeitou este serviço.");
+  }
+
+  void _onFailureDenyJob(){
+
+    setState(() {
+      isLoading=false;
+    });
+    _displaySnackBar(context, "Ocorreu um erro. Tente novamente.");
+  }
+
+  void _sendWhatsAppMsg(){
+    //n tem o telefone do user
+  }
+
+  Future<void> calculateDistance() async {
+
+    distance = await MoveClass().getTheCoordinatesFromTwoAddress(mapSelected['endereco_origem'], mapSelected['endereco_destino']);
+    setState(()  {
+      distance = distance;
+    });
+
+
+  }
 
   void checkFBconnection() async {
 
@@ -274,7 +580,7 @@ class HomePageState extends State<HomePage> {
   Future<void> checkEmailVerified(UserModel userModel, NewAuthService newAuthService) async {
 
     //load data in model
-    await newAuthService.loadUser(userModel);
+    await newAuthService.loadUser();
 
     //check if email is verified
     bool isUserEmailVerified = false;
@@ -286,109 +592,16 @@ class HomePageState extends State<HomePage> {
       if(existsDataInSharedPrefs==true){
         //if there is data, load it
         await SharedPrefsUtils().loadBasicInfoFromSharedPrefs(userModel);
+
       } else {
         //if there is not, load it from FB
         //await newAuthService.loadUserBasicDataInSharedPrefs(userModel);
-        await FirestoreServices().loadUserInfos(userModel, () {_onSucessLoadInfos(userModel);}, () {_onFailureLoadInfos();});
+        //the rest will be done on another metch to check what need to be done in case of more info required
+        //await FirestoreServices().loadUserInfos(userModel, () {_onSucessLoadInfos(userModel);}, () {_onFailureLoadInfos(userModel);});
+
       }
 
-
-      //agora verifica se precisa ler dados do bd
-      int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
-      if(pageDone==99){
-        //nao existe data. Pegar no firebase
-        _userIsOk();//check if truckers cad is complete in firebase
-      } else if(pageDone==1){
-
-        //obs: se pageDone == 1 significa que vai abrir a página 2 (a 1 está ok). Os dados são carregados abaixo para ficarem acessiveis no entanto eles n correpsondem a página 2.
-        //carregue os dados da pagina então, que ja foi preenchida em outro momento
-        SharedPrefsUtils().loadPageOneInfo(userModel);
-
-        //exibe um dialog pro user escolher
-        Alert(
-          context: context,
-          type: AlertType.warning,
-          title: "Completar informações",
-          desc: "Você ainda não completou seu cadastro. Assim, você ainda não está aparecendo para os clientes.",
-          buttons: [
-            DialogButton(
-              child: Text(
-                "Completar agora",
-                style: TextStyle(color: Colors.white, fontSize: 20),
-              ),
-              onPressed: () {
-
-                Navigator.pop(context);
-                goToPage2OfUserInfos(context);
-
-              },
-              color: Color.fromRGBO(0, 179, 134, 1.0),
-            ),
-            DialogButton(
-              child: Text(
-                "Fazer depois",
-                style: TextStyle(color: Colors.white, fontSize: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-              gradient: LinearGradient(colors: [
-                Color.fromRGBO(116, 116, 191, 1.0),
-                Color.fromRGBO(52, 138, 199, 1.0)
-              ]),
-            )
-          ],
-        ).show();
-
-
-        //SharedPrefsUtils().loadPageOneInfo(userModel);
-        //goToPage2OfUserInfos(context);
-      } else if(pageDone==2){
-
-        //SharedPrefsUtils().loadPageOneInfo(userModel);
-
-        //exibe um dialog pro user escolher
-        Alert(
-          context: context,
-          type: AlertType.warning,
-          title: "Completar informações",
-          desc: "Você ainda não completou seu cadastro. Assim, você ainda não está aparecendo para os clientes.",
-          buttons: [
-            DialogButton(
-              child: Text(
-                "Completar agora",
-                style: TextStyle(color: Colors.white, fontSize: 20),
-              ),
-              onPressed: () {
-
-                Navigator.pop(context);
-                goToPage3OfUserInfos(context);
-
-              },
-              color: Color.fromRGBO(0, 179, 134, 1.0),
-            ),
-            DialogButton(
-              child: Text(
-                "Fazer depois",
-                style: TextStyle(color: Colors.white, fontSize: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-              gradient: LinearGradient(colors: [
-                Color.fromRGBO(116, 116, 191, 1.0),
-                Color.fromRGBO(52, 138, 199, 1.0)
-              ]),
-            )
-          ],
-        ).show();
-
-
-      } else if(pageDone==3){
-
-        //user ja completou tudo
-        SharedPrefsUtils().loadPageOneInfo(userModel);
-        //obs a página dois só tem a cnh, n precisa ler
-        SharedPrefsUtils().loadPageThreeInfo(userModel);
-        userModel.updateTruckerInfoOk(true);
-      }
-
+      checkIfNeedUserInfos(userModel);
 
     } else{
 
@@ -400,6 +613,10 @@ class HomePageState extends State<HomePage> {
   }
 
   void _onSucessLoadInfos(UserModel userModel) {
+
+    checkIfNeedUserInfos(userModel);
+
+    /*
     //passar data para sharedPrefs evitando querys
     if(userModel.AllInfoIsDone==1){
       SharedPrefsUtils().savePageOneInfo(userModel);
@@ -410,15 +627,116 @@ class HomePageState extends State<HomePage> {
     } else {
       //ready nothing, fez nada
     }
-
+     */
 
 
   }
 
-  void _onFailureLoadInfos(){
+  void _onFailureLoadInfos(UserModel userModel){
     //faz nada. precisa cadastrar
+    checkIfNeedUserInfos(userModel);
   }
 
+  Future<void> checkIfNeedUserInfos(UserModel userModel) async {
+
+    //agora verifica se precisa ler dados do bd
+    int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+    if(pageDone==99){
+      //nao existe data. Pegar no firebase
+      _userIsOk();//check if truckers cad is complete in firebase
+    } else if(pageDone==1){
+
+      //obs: se pageDone == 1 significa que vai abrir a página 2 (a 1 está ok). Os dados são carregados abaixo para ficarem acessiveis no entanto eles n correpsondem a página 2.
+      //carregue os dados da pagina então, que ja foi preenchida em outro momento
+      SharedPrefsUtils().loadPageOneInfo(userModel);
+
+      //exibe um dialog pro user escolher
+      Alert(
+        context: context,
+        type: AlertType.warning,
+        title: "Completar informações",
+        desc: "Você ainda não completou seu cadastro. Assim, você ainda não está aparecendo para os clientes.",
+        buttons: [
+          DialogButton(
+            child: Text(
+              "Completar agora",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () {
+
+              Navigator.pop(context);
+              goToPage2OfUserInfos(context);
+
+            },
+            color: Color.fromRGBO(0, 179, 134, 1.0),
+          ),
+          DialogButton(
+            child: Text(
+              "Fazer depois",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () => Navigator.pop(context),
+            gradient: LinearGradient(colors: [
+              Color.fromRGBO(116, 116, 191, 1.0),
+              Color.fromRGBO(52, 138, 199, 1.0)
+            ]),
+          )
+        ],
+      ).show();
+
+
+      //SharedPrefsUtils().loadPageOneInfo(userModel);
+      //goToPage2OfUserInfos(context);
+    } else if(pageDone==2){
+
+      //SharedPrefsUtils().loadPageOneInfo(userModel);
+
+      //exibe um dialog pro user escolher
+      Alert(
+        context: context,
+        type: AlertType.warning,
+        title: "Completar informações",
+        desc: "Você ainda não completou seu cadastro. Assim, você ainda não está aparecendo para os clientes.",
+        buttons: [
+          DialogButton(
+            child: Text(
+              "Completar agora",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () {
+
+              Navigator.pop(context);
+              goToPage3OfUserInfos(context);
+
+            },
+            color: Color.fromRGBO(0, 179, 134, 1.0),
+          ),
+          DialogButton(
+            child: Text(
+              "Fazer depois",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () => Navigator.pop(context),
+            gradient: LinearGradient(colors: [
+              Color.fromRGBO(116, 116, 191, 1.0),
+              Color.fromRGBO(52, 138, 199, 1.0)
+            ]),
+          )
+        ],
+      ).show();
+
+
+    } else if(pageDone==3){
+
+      //user ja completou tudo
+      SharedPrefsUtils().loadPageOneInfo(userModel);
+      //obs a página dois só tem a cnh, n precisa ler
+      SharedPrefsUtils().loadPageThreeInfo(userModel);
+      userModel.updateTruckerInfoOk(true);
+    }
+
+
+  }
 
 
 
