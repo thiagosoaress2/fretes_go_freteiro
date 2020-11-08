@@ -1,14 +1,25 @@
 import 'package:camera/camera.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/pages/home_page.dart';
+import 'package:fretes_go_freteiro/utils/notificationHelper.dart';
 import 'package:scoped_model/scoped_model.dart';
 
 import 'login/services/new_auth_service.dart';
 
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+NotificationAppLaunchDetails notificationAppLaunchDetails;
+
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  notificationAppLaunchDetails =
+  await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+  await initNotifications(flutterLocalNotificationsPlugin);
+
   await Firebase.initializeApp(); //inicia aqui o fireflutter
   runApp(MyApp());
 

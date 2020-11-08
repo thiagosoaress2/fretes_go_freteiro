@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
@@ -48,12 +49,48 @@ class HomePageState extends State<HomePage> {
 
   bool isLoading=false;
 
+  //now trying this
+  //https://brainsandbeards.com/blog/how-to-add-local-notifications-to-flutter-app <<este funcionou
 
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  NotificationAppLaunchDetails notificationAppLaunchDetails;
+
+
+
+  Future<void> scheduleNotification(
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
+      String id,
+      String body,
+      DateTime scheduledNotificationDateTime) async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      id,
+      'Reminder notifications',
+      'Remember about it',
+      icon: 'app_icon',
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.schedule(0, 'Reminder', body,
+        scheduledNotificationDateTime, platformChannelSpecifics);
+  }
+
+  Future<void> turnOffNotification(
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin) async {
+    await flutterLocalNotificationsPlugin.cancelAll();
+  }
+
+  Future<void> turnOffNotificationById(
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
+      num id) async {
+    await flutterLocalNotificationsPlugin.cancel(id);
+  }
 
 
   @override
   void initState() {
     super.initState();
+
     checkFBconnection();
     /* LOGIN PATH
     Is user logged in? yes ---------is email verified? yes ----------- there is file in sharedPrefs? yes ----load it then check if need cad infos trucker? yes --- go cad pages
@@ -206,6 +243,13 @@ class HomePageState extends State<HomePage> {
                     ? Center(child: CircularProgressIndicator(),)
                     : Container(),
 
+                    GestureDetector(
+                      onTap: (){
+                        scheduleNotification(flutterLocalNotificationsPlugin, userModel.Uid, "teste body", DateTime.now());
+                      },
+                      child: Container(height: 100.0, width: 100.0, color: Colors.pink,),
+                    )
+
                   ],
                 )
             );
@@ -283,13 +327,6 @@ class HomePageState extends State<HomePage> {
             map['situacao']=='accepted'
             ? WidgetsConstructor().makeText("Você aceitou este serviço", Colors.blue, 15.0, 10.0, 5.0, null)
             : Container(),
-
-            SizedBox(height: 15.0,),
-            
-            map['situacao'] == 'accepted'
-            ? WidgetsConstructor().makeButton(Colors.green, Colors.white, widthPercent*0.75, 60.0, 2.0, 6.0, "Enviar mensagem", Colors.white, 17.0)
-            : Container(),
-            SizedBox(height: 5.0,),
 
           ],
         )
