@@ -16,6 +16,8 @@ class UserModel extends Model {
   String _address="";
   bool _truckerInfoOk=false;
   int _allInfoIsDone=0;
+  String _moveIdCanceled=''; //esta variavel é usada apenas no cancelamento na home_page para passar dados do firestoreservices para a página na volta
+  String _moveGoingNow=''; //id da mudança acontecendo neste instante
 
   //UserModel({this.uid, this.fullName, this.email, this.userRole});
   //UserModel();
@@ -118,6 +120,13 @@ class UserModel extends Model {
 
   get AllInfoIsDone=>_allInfoIsDone;
 
+  void updateMoveGoingNow(String value) {
+    _moveGoingNow = value;
+    notifyListeners();
+  }
+
+  get MoveGoingNow=>_moveGoingNow;
+
   void signOutFromClass(){
     _uid="";
     _fullName="";
@@ -132,6 +141,8 @@ class UserModel extends Model {
     _placa="";
     _truckerInfoOk=false;
     _allInfoIsDone=0;
+    _moveIdCanceled='';
+    _moveGoingNow='';
   }
 
 
@@ -144,5 +155,13 @@ class UserModel extends Model {
     };
 
   }
+
+
+  void updateMoveIdCancelment(String value) { //esta variavel é usada apenas no cancelamento na home_page para passar dados do firestoreservices para a página na volta
+    _moveIdCanceled = value;
+    notifyListeners();
+  }
+
+  get MoveIdCancelment=>_moveIdCanceled;
 
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/services/distance_calculation_service.dart';
+import 'package:fretes_go_freteiro/utils/date_utils.dart';
 import 'package:geocoder/geocoder.dart';
 
 import 'item_class.dart';
@@ -176,6 +177,14 @@ class MoveClass {
     List<ItemClass> itemsSelectedCart2 =[];
     moveClass.itemsSelectedCart = itemsSelectedCart2;
     return moveClass;
+  }
+
+  DateTime formatMyDateToNotify(String originalDate, String time){
+
+    DateTime moveDate = DateUtils().convertDateFromString(originalDate);
+    moveDate = DateUtils().addMinutesAndHoursFromStringToAdate(moveDate, time);
+    return moveDate;
+
   }
 
 /*  reference

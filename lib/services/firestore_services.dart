@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
@@ -15,7 +16,9 @@ class FirestoreServices {
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  final String agendamentosPath = 'agendamentos_aguardando';
+  static final String agendamentosPath = 'agendamentos_aguardando';
+  static final String truckerCancelmentsNotifyPath = 'notificacoes_cancelamento';
+
 
   Future<void> createNewUser(String name, String email, String uid) {
     // Call the user's CollectionReference to add a new user
@@ -343,7 +346,7 @@ class FirestoreServices {
 
   }
 
-  Future<void> alertSetUserAlert(id){
+  Future<void> alertSetUserAlert(String id){
     CollectionReference alert = FirebaseFirestore.instance.collection(agendamentosPath);
     return alert
         .doc(id)
@@ -351,6 +354,62 @@ class FirestoreServices {
       'alert_saw' : false,
       'alert' : 'user',
     });
+  }
+
+  Future<void> checkIfUserHasCancelmentsNotify(String id, UserModel userModel, @required VoidCallback onSucess()){
+
+    FirebaseFirestore.instance
+        .collection(truckerCancelmentsNotifyPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        userModel.updateMoveIdCancelment(documentSnapshot['moveId']);
+        onSucess();
+      }
+    });
+  }
+
+  Future<void> deleteCancelmentsNotify(String id){
+
+    FirebaseFirestore.instance
+        .collection(truckerCancelmentsNotifyPath)
+        .doc(id)
+        .delete();
+
+  }
+
+  Future<MoveClass> loadMoveClass(UserModel userModel, MoveClass moveClass, @required VoidCallback onFail()){
+
+    FirebaseFirestore.instance
+        .collection(agendamentosPath)
+        .doc(userModel.Uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        moveClass.ajudantes = documentSnapshot['ajudante'];
+        moveClass.carro = documentSnapshot['carro'];
+        moveClass.enderecoOrigem = documentSnapshot['endereco_origem'];
+        moveClass.enderecoDestino = documentSnapshot['endereco_destino'];
+        moveClass.escada = documentSnapshot['escada'];
+        moveClass.userId = documentSnapshot['id_contratante'];
+        //moveClass.freteiroId = documentSnapshot['id_freteiro'];  >>n precisa, é o user
+        moveClass.lancesEscada = documentSnapshot['lances_escada'];
+        moveClass.idPedido = documentSnapshot['moveId'];
+        moveClass.ps = documentSnapshot['ps'];
+        moveClass.dateSelected = documentSnapshot['selectedDate'];
+        moveClass.timeSelected = documentSnapshot['selectedTime'];
+        //moveClass.situacao = documentSnapshot['situacao'];
+        moveClass.preco = documentSnapshot['valor'];
+
+        return moveClass;
+      } else {
+        onFail();
+      }
+    });
+
+
   }
 
 

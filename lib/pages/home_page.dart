@@ -11,10 +11,13 @@ import 'package:fretes_go_freteiro/login/services/new_auth_service.dart';
 import 'package:fretes_go_freteiro/menu/drawer.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
+import 'package:fretes_go_freteiro/utils/date_utils.dart';
+import 'package:fretes_go_freteiro/utils/notificationMeths.dart';
 import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:scoped_model/scoped_model.dart';
+import 'package:date_format/date_format.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -38,6 +41,7 @@ class HomePageState extends State<HomePage> {
   bool showJobPopUp=false;
   bool showJobConfirmationPopup=false;
   bool showJobDeclinationPopup=false;
+  bool showJobCancelmentByUser=false;
 
   double heightPercent;
   double widthPercent;
@@ -54,38 +58,6 @@ class HomePageState extends State<HomePage> {
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   NotificationAppLaunchDetails notificationAppLaunchDetails;
-
-
-
-  Future<void> scheduleNotification(
-      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
-      String id,
-      String body,
-      DateTime scheduledNotificationDateTime) async {
-    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      id,
-      'Reminder notifications',
-      'Remember about it',
-      icon: 'app_icon',
-    );
-    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
-    var platformChannelSpecifics = NotificationDetails(
-        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
-    await flutterLocalNotificationsPlugin.schedule(0, 'Reminder', body,
-        scheduledNotificationDateTime, platformChannelSpecifics);
-  }
-
-  Future<void> turnOffNotification(
-      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin) async {
-    await flutterLocalNotificationsPlugin.cancelAll();
-  }
-
-  Future<void> turnOffNotificationById(
-      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
-      num id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
-  }
-
 
   @override
   void initState() {
@@ -223,6 +195,7 @@ class HomePageState extends State<HomePage> {
                         ),
                       ),
                     ),
+
                     showJobPopUp==true
                     ? Container(
                       decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.blue, 3.0, 4.0),
@@ -239,13 +212,30 @@ class HomePageState extends State<HomePage> {
                     ? popUpDeclinationJob()
                     : Container(),
 
+                    showJobCancelmentByUser==true
+                    ? popupShowUserHasCancelledJob(userModel)
+                    : Container(),
+
                     isLoading==true
                     ? Center(child: CircularProgressIndicator(),)
                     : Container(),
 
                     GestureDetector(
                       onTap: (){
-                        scheduleNotification(flutterLocalNotificationsPlugin, userModel.Uid, "teste body", DateTime.now());
+
+                        DateTime moveDate = DateUtils().convertDateFromString('08/11/2020');
+                        print(moveDate);
+                        moveDate = DateUtils().addMinutesAndHoursFromStringToAdate(moveDate, '22:01');
+                        /*
+                        var string = "21:58";
+                        var ar = string.split(":");
+                        int hourNew = int.parse(ar.first);
+                        int minuteNew = int.parse(ar.last);
+                        moveDate = DateTime(moveDate.year, moveDate.month, moveDate.day, hourNew, minuteNew);
+                        print(moveDate);
+                         */
+
+                        NotificationMeths().scheduleNotification(flutterLocalNotificationsPlugin, userModel.Uid, "Atenção: Mudança amanhã as 15:00 horas", moveDate);
                       },
                       child: Container(height: 100.0, width: 100.0, color: Colors.pink,),
                     )
@@ -260,6 +250,18 @@ class HomePageState extends State<HomePage> {
   }
 
   Widget ListLine(Map map){
+
+    if(map['situacao'] == 'accepted'){
+      String today = DateUtils().giveMeTheDateToday();
+
+      if(today == map['selectedDate']){
+        print('entrou');
+        //se chegou aqui é pq tá no dia da mudança
+        //tem que verificar agora se tá quase na hora também, tipo 15 min pra exibir o mapa
+
+      }
+
+    }
 
     return Padding(padding: EdgeInsets.all(10.0),
     child: Container(
@@ -522,6 +524,54 @@ class HomePageState extends State<HomePage> {
 
   }
 
+  Widget popupShowUserHasCancelledJob(UserModel userModel){
+
+    return Center(
+      child: Container(
+        width: widthPercent*0.8,
+        height: heightPercent*0.4,
+        decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.grey, 3.0, 5.0),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(5.0, 0.0, 0.0, 0.0),
+          child: Column(
+            children: [
+              WidgetsConstructor().makeText("Atenção", Colors.red, 20.0, 30.0, 40.0, "center"),
+              WidgetsConstructor().makeText("Um usuário cancelou a mudança", Colors.blue, 16.0, 10.0, 40.0, "center"),
+              SizedBox(height: heightPercent*0.039),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    width: widthPercent*0.25,
+                    height: heightPercent*0.10,
+                    decoration: WidgetsConstructor().myBoxDecoration(Colors.white, Colors.blue, 0.5, 5.0),
+                    child: GestureDetector(
+                      onTap: (){
+
+                        FirestoreServices().deleteCancelmentsNotify(userModel.Uid);
+                        //agora cancelar as notificacoes locais (lembretes)
+                        //notificação de 24h de antecedencia
+                        NotificationMeths().turnOffNotificationById(flutterLocalNotificationsPlugin, userModel.MoveIdCancelment);
+                        //notificação de 2h de antecedencia]
+                        NotificationMeths().turnOffNotificationById(flutterLocalNotificationsPlugin, userModel.MoveIdCancelment+'2');
+
+                          setState(() {
+                            showJobCancelmentByUser=false;
+                          });
+                      },
+                      child: WidgetsConstructor().makeText("Ok", Colors.blue, 16.0, 0.0, 0.0, 'center') ,
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+
+  }
+
   void ConfirmJob() async {
 
     await FirestoreServices().confirmJobAceptance(mapSelected['id_contratante'],() {_onSucessConfirmJob();}, () {_onFailConfirmJob();});
@@ -529,7 +579,17 @@ class HomePageState extends State<HomePage> {
   }
 
   void _onSucessConfirmJob(){
+    //coloca um alerta de novidade para o usuário
     FirestoreServices().alertSetUserAlert(mapSelected['moveId']);
+    //cria uma notificação para o freteiro 24 horas antes
+    DateTime moveDate = MoveClass().formatMyDateToNotify(mapSelected['selectedDate'], mapSelected['selectedTime']);
+    DateTime notifyDateTime = DateUtils().subHoursFromDate(moveDate, 24); //ajusta 24 horas antes
+    NotificationMeths().scheduleNotification(flutterLocalNotificationsPlugin, mapSelected['moveId'], "Lembrete: Mudança amanhã às "+mapSelected['selectedTime'], notifyDateTime);
+
+    //notificação com 2 horas de antecedencia (obs: o id da notificação é moveID (id do cliente+2)
+    notifyDateTime = DateUtils().subHoursFromDate(moveDate, 2); //ajusta 2 horas antes
+    NotificationMeths().scheduleNotification(flutterLocalNotificationsPlugin, mapSelected['moveId']+'2', "Lembrete: Mudança em duas horas às "+mapSelected['selectedTime'] , notifyDateTime);
+
     setState(() {
       isLoading=false;
       showJobConfirmationPopup=false;
@@ -554,6 +614,11 @@ class HomePageState extends State<HomePage> {
   void _onSucessDenyJob(){
 
     FirestoreServices().alertSetUserAlert(mapSelected['moveId']);
+
+    //cancelando as notificações
+    NotificationMeths().turnOffNotificationById(flutterLocalNotificationsPlugin, mapSelected['moveId']); //24h early
+    NotificationMeths().turnOffNotificationById(flutterLocalNotificationsPlugin, mapSelected['moveId']+'2'); //2h early
+
     mapSelected['situacao']='deny';
     mapSelected['id_freteiro']=null;
     mapSelected['nome_freteiro']=null;
@@ -770,12 +835,24 @@ class HomePageState extends State<HomePage> {
       //obs a página dois só tem a cnh, n precisa ler
       SharedPrefsUtils().loadPageThreeInfo(userModel);
       userModel.updateTruckerInfoOk(true);
+
+      //novos métodos após todas verificações
+      checkIfUserHasCancelmentsNotify(userModel);
     }
 
 
   }
 
+  Future<void> checkIfUserHasCancelmentsNotify(UserModel userModel) async {
 
+    FirestoreServices().checkIfUserHasCancelmentsNotify(userModel.Uid, userModel, () {_onSucessShowUserCancelment(userModel);});
+  }
+
+  void _onSucessShowUserCancelment(UserModel userModel){
+    setState(() {
+      showJobCancelmentByUser=true;
+    });
+  }
 
   _displaySnackBar(BuildContext context, String msg) {
 

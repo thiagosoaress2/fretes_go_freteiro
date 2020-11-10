@@ -72,4 +72,87 @@ class DateUtils {
     var today = DateTime.now();
     return convertStringFromDate(today);
   }
+
+  DateTime addDaysToDate(DateTime originalDate, int daysToAdd){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day+daysToAdd);
+    return newDate;
+  }
+
+  DateTime subDaysFromDate(DateTime originalDate, int daysToSub){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day-daysToSub);
+    return newDate;
+  }
+
+  DateTime addMonthsToDate(DateTime originalDate, int monthToAdd){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month+monthToAdd, originalDate.day);
+    return newDate;
+  }
+
+  DateTime subMonthsFromDate(DateTime originalDate, int monthsToSub){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month-monthsToSub, originalDate.day);
+    return newDate;
+  }
+
+  DateTime addYeasToDate(DateTime originalDate, int yearsToAdd){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year+yearsToAdd, originalDate.month, originalDate.day);
+    return newDate;
+  }
+
+  DateTime subYearsFromDate(DateTime originalDate, int yearsToSub){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year-yearsToSub, originalDate.month, originalDate.day);
+    return newDate;
+  }
+
+  DateTime addHourToDate(DateTime originalDate, int hoursToAdd){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour+hoursToAdd, originalDate.minute);
+    return newDate;
+  }
+
+  DateTime subHoursFromDate(DateTime originalDate, int hoursToSub){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour-hoursToSub, originalDate.minute);
+    return newDate;
+  }
+
+  DateTime addMinutesToDate(DateTime originalDate, int minutesToAdd){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute+minutesToAdd);
+    return newDate;
+  }
+
+  DateTime subMinutesFromDate(DateTime originalDate, int minutesToSub){
+    //use este de baixo para trabalhar com horas e minutos se precisar
+    //DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute);
+    DateTime newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, originalDate.hour, originalDate.minute-minutesToSub);
+    return newDate;
+  }
+
+  DateTime addMinutesAndHoursFromStringToAdate(DateTime originalDate, String time){
+
+    //time needs to be in hh:mm format
+    DateTime newDate;
+    var ar = time.split(":"); //cria um array
+    int hourNew = int.parse(ar.first); //hora
+    int minuteNew = int.parse(ar.last); //minuto
+    newDate = DateTime(originalDate.year, originalDate.month, originalDate.day, hourNew, minuteNew);
+    return newDate;
+
+  }
+
 }
