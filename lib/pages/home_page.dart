@@ -10,6 +10,8 @@ import 'package:fretes_go_freteiro/login/pages/email_verify_view.dart';
 import 'package:fretes_go_freteiro/login/services/new_auth_service.dart';
 import 'package:fretes_go_freteiro/menu/drawer.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
+import 'package:fretes_go_freteiro/pages/avaliation_page.dart';
+import 'package:fretes_go_freteiro/pages/move_day_page.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
 import 'package:fretes_go_freteiro/utils/date_utils.dart';
 import 'package:fretes_go_freteiro/utils/notificationMeths.dart';
@@ -157,6 +159,11 @@ class HomePageState extends State<HomePage> {
                                       itemBuilder: (context, index) {
 
 
+                                        if(index+1==querySnapshot.size){
+                                          //significa que é o ultimo load. Posso fazer verificação para abrir proxima página sem apresentar erros
+                                          checkIfExistMovegoingNow(querySnapshot);
+                                        }
+
                                         Map<String, dynamic> map = querySnapshot.docs[index].data();
                                         return GestureDetector(
                                           onTap: (){
@@ -250,18 +257,6 @@ class HomePageState extends State<HomePage> {
   }
 
   Widget ListLine(Map map){
-
-    if(map['situacao'] == 'accepted'){
-      String today = DateUtils().giveMeTheDateToday();
-
-      if(today == map['selectedDate']){
-        print('entrou');
-        //se chegou aqui é pq tá no dia da mudança
-        //tem que verificar agora se tá quase na hora também, tipo 15 min pra exibir o mapa
-
-      }
-
-    }
 
     return Padding(padding: EdgeInsets.all(10.0),
     child: Container(
@@ -605,6 +600,94 @@ class HomePageState extends State<HomePage> {
     _displaySnackBar(context, "Ocorreu um erro. Tente novamente");
   }
 
+  Future<void> checkIfExistMovegoingNow(QuerySnapshot querySnapshot) async {
+
+    int i = 0;
+    while(i<querySnapshot.size){
+
+      if(querySnapshot.docs[i]['situacao'] == 'accepted'){
+
+        DateTime scheduledDate = DateUtils().convertDateFromString(querySnapshot.docs[i]['selectedDate']);
+        DateTime scheduledDateAndTime = DateUtils().addMinutesAndHoursFromStringToAdate(scheduledDate, querySnapshot.docs[i]['selectedTime']);
+        final dif = DateUtils().compareTwoDatesInMinutes(DateTime.now(), scheduledDateAndTime);
+
+        if(dif.isNegative) {
+          //a data já expirou
+
+          MoveClass _moveClass = MoveClass();
+          Map<String, dynamic> map = querySnapshot.docs[i].data();
+          _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+          Future.delayed(Duration(seconds: 5)).then((_) {
+            Navigator.of(context).pop();
+            Navigator.push(context, MaterialPageRoute(
+                builder: (context) => AvaliationPage(_moveClass)));
+          });
+
+        } else if(dif<=60 && dif>15){
+
+          _displaySnackBar(context, "Você possui uma mudança agendada às "+querySnapshot.docs[i]['selectedTime']);
+
+        } else if(dif<=15){
+          //ta na hora da mudança. Abrir a pagina de mudança
+          MoveClass _moveClass = MoveClass();
+          Map<String, dynamic> map = querySnapshot.docs[i].data();
+          _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+          _moveClass = await MoveClass().getTheCoordinates(_moveClass, _moveClass.enderecoOrigem, _moveClass.enderecoDestino).whenComplete(() {
+
+            Navigator.of(context).pop();
+            Navigator.push(context, MaterialPageRoute(
+                builder: (context) => MoveDayPage(_moveClass)));
+
+
+          });
+
+
+        } else {
+
+          //do nothing, falta mt ainda
+
+        }
+
+
+      }
+
+    i++;
+    }
+
+
+
+    /*
+    if(map['situacao'] == 'accepted'){
+
+      DateTime scheduledDate = DateUtils().convertDateFromString(map['selectedDate']);
+      DateTime scheduledDateAndTime = DateUtils().addMinutesAndHoursFromStringToAdate(scheduledDate, map['selectedTime']);
+      final dif = DateUtils().compareTwoDatesInMinutes(DateTime.now(), scheduledDateAndTime);
+
+      if(dif.isNegative){
+        //a data já expirou
+        print('expirou');
+      } else if(dif<=15){
+        //ta na hora da mudança. Abrir a pagina de mudança
+
+        Navigator.of(context).pop();
+        Navigator.push(context, MaterialPageRoute(
+            builder: (context) => MoveDayPage())
+
+        );
+
+
+      } else {
+        print('falta mt');
+      }
+
+    }
+
+
+     */
+  }
+
   void DenyJob() async {
 
     await FirestoreServices().confirmJobDeny(mapSelected['moveId'], () {_onSucessDenyJob();}, () {_onFailureDenyJob();});
@@ -639,13 +722,9 @@ class HomePageState extends State<HomePage> {
     _displaySnackBar(context, "Ocorreu um erro. Tente novamente.");
   }
 
-  void _sendWhatsAppMsg(){
-    //n tem o telefone do user
-  }
-
   Future<void> calculateDistance() async {
 
-    distance = await MoveClass().getTheCoordinatesFromTwoAddress(mapSelected['endereco_origem'], mapSelected['endereco_destino']);
+    distance = await MoveClass().getTheDistanceFromTwoAddress(mapSelected['endereco_origem'], mapSelected['endereco_destino']);
     setState(()  {
       distance = distance;
     });
@@ -712,31 +791,6 @@ class HomePageState extends State<HomePage> {
           builder: (context) => EmailVerify()));
 
     }
-  }
-
-  void _onSucessLoadInfos(UserModel userModel) {
-
-    checkIfNeedUserInfos(userModel);
-
-    /*
-    //passar data para sharedPrefs evitando querys
-    if(userModel.AllInfoIsDone==1){
-      SharedPrefsUtils().savePageOneInfo(userModel);
-    } else if(userModel.AllInfoIsDone==2){
-      SharedPrefsUtils().savePageTwoInfo(userModel);
-    } else if(userModel.AllInfoIsDone==3){
-      SharedPrefsUtils().savePageThreeInfo(userModel);
-    } else {
-      //ready nothing, fez nada
-    }
-     */
-
-
-  }
-
-  void _onFailureLoadInfos(UserModel userModel){
-    //faz nada. precisa cadastrar
-    checkIfNeedUserInfos(userModel);
   }
 
   Future<void> checkIfNeedUserInfos(UserModel userModel) async {

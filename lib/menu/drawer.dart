@@ -129,19 +129,6 @@ class _MenuDrawerState extends State<MenuDrawer> {
 
                       ),
 
-                      InkWell( //toque com animação
-                        onTap: (){ //click
-                          setState(() {
-
-                            Navigator.of(context).pop();
-                            Navigator.push(context, MaterialPageRoute(
-                                builder: (context) => MoveDayPage()));
-
-                          });
-                        },
-                        child: Container(margin: EdgeInsets.only(left: 20.0), child:_drawLine(Icons.exit_to_app, "Move day page", Theme.of(context).primaryColor, context),),
-
-                      ),
 
                     ]
                 )

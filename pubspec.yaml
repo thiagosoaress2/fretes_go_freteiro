@@ -48,6 +48,9 @@ dependencies:
   flutter_local_notifications: ^1.4.2
   rxdart: ^0.23.1
   google_maps_flutter: ^1.0.6
+  intl: ^0.16.1
+  location: ^3.0.2
+  geolocator: ^6.1.6
 
 
 
@@ -72,6 +75,7 @@ flutter:
     - images/cnhavatar.jpg
     - images/carrinhobaby.jpg
     - images/caminhaozinho.jpg
+    - images/markerico.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

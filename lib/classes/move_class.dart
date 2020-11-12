@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/services/distance_calculation_service.dart';
@@ -67,7 +68,7 @@ class MoveClass {
 
   }
 
-  Future<double> getTheCoordinatesFromTwoAddress(@required String addressOrigem, @required String adressDestino) async {
+  Future<double> getTheDistanceFromTwoAddress(@required String addressOrigem, @required String adressDestino) async {
 
 
     var addresses = await Geocoder.local.findAddressesFromQuery(addressOrigem);
@@ -184,6 +185,26 @@ class MoveClass {
     DateTime moveDate = DateUtils().convertDateFromString(originalDate);
     moveDate = DateUtils().addMinutesAndHoursFromStringToAdate(moveDate, time);
     return moveDate;
+
+  }
+
+  MoveClass passDataFromQuerySnapshotToMoveClass(Map map){
+
+    MoveClass moveClass = MoveClass();
+    moveClass.ajudantes = map['ajudantes'];
+    moveClass.enderecoOrigem = map['endereco_origem'];
+    moveClass.enderecoDestino = map['endereco_destino'];
+    moveClass.escada = map['escada'];
+    moveClass.userId = map['id_contratante'];
+    moveClass.lancesEscada = map['lances_escada']??0;
+    moveClass.idPedido = map['moveId'];
+    moveClass.ps = map['ps'];
+    moveClass.dateSelected = map['selectedDate'];
+    moveClass.timeSelected = map['selectedTime'];
+    moveClass.situacao = map['situacao'];
+    moveClass.preco = map['valor'];
+
+    return moveClass;
 
   }
 

@@ -1,4 +1,6 @@
 import 'package:date_format/date_format.dart';
+import 'package:intl/intl.dart';
+
 
 //needs to add date_format: ^1.0.8 to pubspec.yaml
 
@@ -71,6 +73,12 @@ class DateUtils {
   String giveMeTheDateToday(){
     var today = DateTime.now();
     return convertStringFromDate(today);
+  }
+
+  String giveMeTheTimeNow(){
+    var now = DateTime.now();
+    String formattedTime = DateFormat.Hm().format(now);
+    return formattedTime;
   }
 
   DateTime addDaysToDate(DateTime originalDate, int daysToAdd){
@@ -154,5 +162,32 @@ class DateUtils {
     return newDate;
 
   }
+
+  int compareTwoDatesInMinutes(DateTime date1, DateTime date2){
+
+    //String result;
+    final int difference = date2.difference(date1).inMinutes;
+    return difference;
+
+    /*
+    OBS
+    se der resultado negativo é porque a date1 é maior (ou seja, já passou da hora. Ex: date1=10/11/2020 06:50  date2=10/11/2020 14:20 deu -440)
+
+     */
+
+    /*
+    if(difference==0){
+      result = 'equal';
+    } else if(difference.isNegative){
+      result = 'date2bigger';
+    } else {
+      result = 'date1bigger';
+    }
+
+     */
+
+  }
+
+
 
 }
