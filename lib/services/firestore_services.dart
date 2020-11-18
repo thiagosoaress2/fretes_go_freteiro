@@ -412,6 +412,17 @@ class FirestoreServices {
 
   }
 
+  Future<void> saveLastUserLocation(String moveId, double latitude, double longitude){
+
+    CollectionReference userLocation = FirebaseFirestore.instance.collection(agendamentosPath);
+    return userLocation
+        .doc(moveId)
+        .update({
+      'lastTrucker_lat' : latitude,
+      'lastTrucker_long' : longitude,
+    });
+
+  }
 
 }
 

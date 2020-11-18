@@ -49,8 +49,8 @@ dependencies:
   rxdart: ^0.23.1
   google_maps_flutter: ^1.0.6
   intl: ^0.16.1
-  location: ^3.0.2
   geolocator: ^6.1.6
+  location: ^3.0.2
 
 
 
