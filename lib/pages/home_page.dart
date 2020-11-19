@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad.dart';
+import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_bank_data.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_info_profs.dart';
 import 'package:fretes_go_freteiro/login/pages/email_verify_view.dart';
@@ -112,6 +113,12 @@ class HomePageState extends State<HomePage> {
 
             query = FirebaseFirestore.instance.collection("agendamentos_aguardando").where('id_freteiro', isEqualTo: userModel.Uid);
 
+            Navigator.of(context).pop();
+            Navigator.push(context, MaterialPageRoute(
+                builder: (context) => TruckerInfosCadBankData()));
+
+
+
             return Scaffold(
                 key: _scaffoldKey,
                 floatingActionButton: FloatingActionButton(backgroundColor: Colors.blue, child: Icon(Icons.add_circle, size: 50.0,), onPressed: () { },),
@@ -125,6 +132,8 @@ class HomePageState extends State<HomePage> {
                 drawer: MenuDrawer(),
                 body: Stack(
                   children: [
+
+
                     Center(
                       child: Container(
                         child: Column(
@@ -618,11 +627,14 @@ class HomePageState extends State<HomePage> {
           Map<String, dynamic> map = querySnapshot.docs[i].data();
           _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
 
+          /*
           Future.delayed(Duration(seconds: 5)).then((_) {
             Navigator.of(context).pop();
             Navigator.push(context, MaterialPageRoute(
                 builder: (context) => AvaliationPage(_moveClass)));
           });
+
+           */
 
         } else if(dif<=60 && dif>15){
 

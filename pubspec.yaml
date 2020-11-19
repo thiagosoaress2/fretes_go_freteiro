@@ -51,6 +51,7 @@ dependencies:
   intl: ^0.16.1
   geolocator: ^6.1.6
   location: ^3.0.2
+  group_radio_button: ^1.0.1
 
 
 
