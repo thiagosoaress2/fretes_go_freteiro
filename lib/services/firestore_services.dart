@@ -18,17 +18,19 @@ class FirestoreServices {
 
   static final String agendamentosPath = 'agendamentos_aguardando';
   static final String truckerCancelmentsNotifyPath = 'notificacoes_cancelamento';
+  static final String truckerPath = 'truckers';
 
 
   Future<void> createNewUser(String name, String email, String uid) {
     // Call the user's CollectionReference to add a new user
-    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
+    CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
 
     return users
         .doc(uid)
         .set({
       'name': name,
-      'email': email
+      'email': email,
+      'all_info_done' : 99,
     })
         .then((value) {
       userModel.updateFullName(name);
@@ -41,7 +43,7 @@ class FirestoreServices {
 
     String exists;
     FirebaseFirestore.instance
-        .collection('truckers')
+        .collection(truckerPath)
         .doc(userModel.Uid)
         .get()
         .then((DocumentSnapshot documentSnapshot) {
@@ -54,22 +56,24 @@ class FirestoreServices {
     });
   }
 
-  void getUserInfoCheckWhatIsMissing(UserModel userModel, @required VoidCallback goToPage1(), @required VoidCallback goToPage2(), @required VoidCallback goToPage3()) {
+  void getUserInfoCheckWhatIsMissing(UserModel userModel, @required VoidCallback goToPage1(), @required VoidCallback goToPage2(), @required VoidCallback goToPage3(), @required VoidCallback goToPage4()) {
 
     int exists;
     FirebaseFirestore.instance
-        .collection('truckers')
+        .collection(truckerPath)
         .doc(userModel.Uid)
         .get()
         .then((DocumentSnapshot documentSnapshot) {
       if (documentSnapshot.exists) {
-        exists = documentSnapshot['all_info_done'];
+        exists = documentSnapshot['all_info_done']??99;
         if(exists==1){
           //user só preencheu a primeira página
           goToPage2();
         } else if(exists == 2){
           goToPage3();
-        } else {
+        } else if(exists == 3){
+        goToPage4();
+      } else {
           //user n fez nada, ir para a página inicial
           goToPage1();
         }
@@ -82,7 +86,7 @@ class FirestoreServices {
 
     String latlong;
     FirebaseFirestore.instance
-        .collection('truckers')
+        .collection(truckerPath)
         .doc(uid)
         .get()
         .then((DocumentSnapshot documentSnapshot) {
@@ -106,9 +110,9 @@ class FirestoreServices {
       String _address, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
-    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
+    CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
 
-    double latlong;
+    double latlong = latitude+longitude;
     if(latitude==null){
       //esta updatando
       return users
@@ -155,7 +159,7 @@ class FirestoreServices {
   Future<void> saveUserCNHinfo(String uid, String uri, int pageDone, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
-    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
+    CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
 
     if(pageDone>=2){
 
@@ -202,7 +206,7 @@ class FirestoreServices {
   Future<void> saveUserCarInfo(String uid, String placa, File imageCar, String uri, String carro, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
-    CollectionReference users = FirebaseFirestore.instance.collection('truckers');
+    CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
 
 
 
@@ -247,7 +251,7 @@ class FirestoreServices {
   Future<void> loadUserInfos(UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFail()){
 
     FirebaseFirestore.instance
-        .collection('truckers')
+        .collection(truckerPath)
         .doc(userModel.Uid)
         .get()
         .then((DocumentSnapshot documentSnapshot) {
@@ -421,6 +425,29 @@ class FirestoreServices {
       'lastTrucker_lat' : latitude,
       'lastTrucker_long' : longitude,
     });
+
+  }
+
+  Future<void> saveBankInfo(@required UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
+
+    CollectionReference userLocation = FirebaseFirestore.instance.collection(truckerPath);
+    return userLocation
+        .doc(userModel.Uid)
+        .update({
+      'conta_nome' : userModel.NameAcountOwner,
+      'conta_agencia' : userModel.Agency,
+      'conta_conta' : userModel.Acount,
+      'conta_digito' : userModel.Digit,
+      'conta_tipo' : userModel.AcountType,
+      'conta_banco' : userModel.Bank,
+      'conta_cpf' : userModel.CpfAcountOwner,
+    })
+        .then((value) {
+
+      onSucess();
+
+    })
+        .catchError((error) => onFailure());
 
   }
 

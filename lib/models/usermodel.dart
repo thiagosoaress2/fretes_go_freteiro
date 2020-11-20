@@ -18,6 +18,13 @@ class UserModel extends Model {
   int _allInfoIsDone=0;
   String _moveIdCanceled=''; //esta variavel é usada apenas no cancelamento na home_page para passar dados do firestoreservices para a página na volta
   String _moveGoingNow=''; //id da mudança acontecendo neste instante
+  String _nameAcountOwner='';
+  String _agency='';
+  String _acount='';
+  String _digit='';
+  String _acountType='';
+  String _bank='';
+  String _cpfAcountOwner='';
 
   //UserModel({this.uid, this.fullName, this.email, this.userRole});
   //UserModel();
@@ -126,6 +133,58 @@ class UserModel extends Model {
   }
 
   get MoveGoingNow=>_moveGoingNow;
+
+  void updateNameOwnerAcount(String value) {
+    _nameAcountOwner = value;
+    notifyListeners();
+  }
+
+  get NameAcountOwner=>_nameAcountOwner;
+
+  void updateAgency(String value) {
+    _agency = value;
+    notifyListeners();
+  }
+
+  get Agency=>_agency;
+
+  void updateAcount(String value) {
+    _acount = value;
+    notifyListeners();
+  }
+
+  get Acount=>_acount;
+
+  void updateDigit(String value) {
+    _digit = value;
+    notifyListeners();
+  }
+
+  get Digit=>_digit;
+
+  void updateAcountType(String value) {
+    _acountType = value;
+    notifyListeners();
+  }
+
+  get AcountType=>_acountType;
+
+  void updateBank(String value) {
+    _bank = value;
+    notifyListeners();
+  }
+
+  get Bank=>_bank;
+
+  void updateCpfAcountOwner(String value) {
+    _cpfAcountOwner = value;
+    notifyListeners();
+  }
+
+  get CpfAcountOwner=>_cpfAcountOwner;
+
+
+
 
   void signOutFromClass(){
     _uid="";

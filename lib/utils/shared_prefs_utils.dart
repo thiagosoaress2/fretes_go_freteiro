@@ -9,7 +9,7 @@ class SharedPrefsUtils {
 
     await prefs.setString('uid', userModel.Uid);
     await prefs.setString('email', userModel.Email);
-    await prefs.setString('all_info_done', userModel.AllInfoIsDone);
+    await prefs.setInt('all_info_done', userModel.AllInfoIsDone);
 
   }
 

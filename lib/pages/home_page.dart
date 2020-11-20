@@ -45,6 +45,7 @@ class HomePageState extends State<HomePage> {
   bool showJobConfirmationPopup=false;
   bool showJobDeclinationPopup=false;
   bool showJobCancelmentByUser=false;
+  bool isLoading=false;
 
   double heightPercent;
   double widthPercent;
@@ -53,8 +54,6 @@ class HomePageState extends State<HomePage> {
   int indexSelected;
 
   double distance;
-
-  bool isLoading=false;
 
   //now trying this
   //https://brainsandbeards.com/blog/how-to-add-local-notifications-to-flutter-app <<este funcionou
@@ -113,9 +112,6 @@ class HomePageState extends State<HomePage> {
 
             query = FirebaseFirestore.instance.collection("agendamentos_aguardando").where('id_freteiro', isEqualTo: userModel.Uid);
 
-            Navigator.of(context).pop();
-            Navigator.push(context, MaterialPageRoute(
-                builder: (context) => TruckerInfosCadBankData()));
 
 
 
@@ -855,8 +851,7 @@ class HomePageState extends State<HomePage> {
 
       //SharedPrefsUtils().loadPageOneInfo(userModel);
       //goToPage2OfUserInfos(context);
-    } else if(pageDone==2){
-
+    } else if(pageDone==2) {
       //SharedPrefsUtils().loadPageOneInfo(userModel);
 
       //exibe um dialog pro user escolher
@@ -872,10 +867,42 @@ class HomePageState extends State<HomePage> {
               style: TextStyle(color: Colors.white, fontSize: 20),
             ),
             onPressed: () {
-
               Navigator.pop(context);
               goToPage3OfUserInfos(context);
+            },
+            color: Color.fromRGBO(0, 179, 134, 1.0),
+          ),
+          DialogButton(
+            child: Text(
+              "Fazer depois",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () => Navigator.pop(context),
+            gradient: LinearGradient(colors: [
+              Color.fromRGBO(116, 116, 191, 1.0),
+              Color.fromRGBO(52, 138, 199, 1.0)
+            ]),
+          )
+        ],
+      ).show();
 
+    } else if(pageDone==3){
+
+      //exibe um dialog pro user escolher
+      Alert(
+        context: context,
+        type: AlertType.warning,
+        title: "Completar informações bancárias",
+        desc: "Você ainda não completou seu cadastro. Assim, você ainda não está aparecendo para os clientes.",
+        buttons: [
+          DialogButton(
+            child: Text(
+              "Completar agora",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              goToPage4OfUserInfos(context);
             },
             color: Color.fromRGBO(0, 179, 134, 1.0),
           ),
@@ -894,13 +921,14 @@ class HomePageState extends State<HomePage> {
       ).show();
 
 
-    } else if(pageDone==3){
+    } else if(pageDone==4){
 
       //user ja completou tudo
       SharedPrefsUtils().loadPageOneInfo(userModel);
       //obs a página dois só tem a cnh, n precisa ler
       SharedPrefsUtils().loadPageThreeInfo(userModel);
       userModel.updateTruckerInfoOk(true);
+      //a pagina 4 tb nao precisa ler pq sao dados bancários q n vamos manter no shared
 
       //novos métodos após todas verificações
       checkIfUserHasCancelmentsNotify(userModel);
@@ -942,7 +970,7 @@ class HomePageState extends State<HomePage> {
 
   Future<void> _userIsOk() async {
     //check if user concluded the cad as trucker
-    await FirestoreServices().getUserInfoCheckWhatIsMissing(userModelGLobal, () {goToPage1OfUserInfos(context); }, () {goToPage2OfUserInfos(context); }, () {goToPage3OfUserInfos(context); });
+    await FirestoreServices().getUserInfoCheckWhatIsMissing(userModelGLobal, () {goToPage1OfUserInfos(context); }, () {goToPage2OfUserInfos(context); }, () {goToPage3OfUserInfos(context); }, () {goToPage4OfUserInfos(context); });
 
   }
 
@@ -968,6 +996,12 @@ class HomePageState extends State<HomePage> {
     Navigator.of(context).pop();
     Navigator.push(context, MaterialPageRoute(
         builder: (context) => TruckerInfosCadCarInfo()));
+  }
+
+  void goToPage4OfUserInfos(BuildContext context){
+    Navigator.of(context).pop();
+    Navigator.push(context, MaterialPageRoute(
+        builder: (context) => TruckerInfosCadBankData()));
   }
 
 }

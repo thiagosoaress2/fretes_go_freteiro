@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/camera_widgets/take_picture_page.dart';
 import 'package:fretes_go_freteiro/classes/truck_class.dart';
+import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_bank_data.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/pages/home_page.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
@@ -457,7 +458,7 @@ class _TruckerInfosCadCarInfoState extends State<TruckerInfosCadCarInfo> {
                       }
 
                     },
-                    child: WidgetsConstructor().makeButton(Colors.blue, Colors.blue, widthPercent*0.75, 50.0, 2.0, 4.0, "Finalizar", Colors.white, 16.0),
+                    child: WidgetsConstructor().makeButton(Colors.blue, Colors.blue, widthPercent*0.75, 50.0, 2.0, 4.0, "Salvar informações", Colors.white, 16.0),
                   ),
 
                   SizedBox(height: 40.0,),
@@ -522,17 +523,28 @@ class _TruckerInfosCadCarInfoState extends State<TruckerInfosCadCarInfo> {
 
   Future<void> _onSucess1(UserModel userModel) async {
 
+    userModel.updateVehicle(carro);
+    await SharedPrefsUtils().savePageThreeInfo(userModel);
+
+
+
+    Navigator.of(context).pop();
+    Navigator.push(context, MaterialPageRoute(
+        builder: (context) => TruckerInfosCadBankData()));
+
+    /*
     bool isNew=true;
     int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
     if(pageDone==3) { //se o dado existe
       isNew = false;
     }
     userModel.updateVehicle(carro);
-    await FirestoreServices().placeUserInSearch(isNew, userModel, () {_onSucess2(userModel); }, () {_onFailure(); });
+    await FirestoreServices().placeUserInSearch(isNew, userModel, () {_onSucess2(userModel); }, () {_onFailure(); }); //vai sair para a proxima pag
+
+     */
   }
 
-
-  Future<void> _onSucess2(UserModel userModel) async {
+  Future<void> _onSucess2(UserModel userModel) async { //todo este metodo vai para a proxima pagina
 
     //chamar salvamentos 2
     await SharedPrefsUtils().savePageThreeInfo(userModel);
