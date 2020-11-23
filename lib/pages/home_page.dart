@@ -45,6 +45,10 @@ class HomePageState extends State<HomePage> {
   bool showJobConfirmationPopup=false;
   bool showJobDeclinationPopup=false;
   bool showJobCancelmentByUser=false;
+
+  bool showCustomPupUp1Btn=false;
+  bool showCustomPopup=false;
+
   bool isLoading=false;
 
   double heightPercent;
@@ -55,11 +59,17 @@ class HomePageState extends State<HomePage> {
 
   double distance;
 
+  String popupStrTxt; //texto da popup costumizavel
+  String popupStrTitle;
+  int indexPosition;
+
   //now trying this
   //https://brainsandbeards.com/blog/how-to-add-local-notifications-to-flutter-app <<este funcionou
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   NotificationAppLaunchDetails notificationAppLaunchDetails;
+
+  QuerySnapshot _querySnapshot;
 
   @override
   void initState() {
@@ -227,6 +237,16 @@ class HomePageState extends State<HomePage> {
                     showJobCancelmentByUser==true
                     ? popupShowUserHasCancelledJob(userModel)
                     : Container(),
+                    
+                    showCustomPupUp1Btn==true
+                    ? WidgetsConstructor().customPopUp1Btn(popupStrTitle, popupStrTxt,Colors.red, widthPercent, heightPercent, () {_btnOk();})
+                    : Container(),
+                    
+                    showCustomPopup==true
+                    ?  WidgetsConstructor().customPopUp3buttons(popupStrTitle, popupStrTxt,
+                      'Depois', Colors.red, 'Já terminei', Colors.lightGreen, 'Iniciar mudança', Colors.blue, widthPercent, heightPercent,
+                      () {_latter();},  () {_alreadyFinish();}, () {_goToMoveState(_querySnapshot);})
+                    : Container(),
 
                     isLoading==true
                     ? Center(child: CircularProgressIndicator(),)
@@ -260,6 +280,56 @@ class HomePageState extends State<HomePage> {
       },
     );
   }
+
+
+
+
+  //funções de callback - just close the window - popup de 1 botão
+  void _btnOk(){
+    setState(() {
+      showCustomPupUp1Btn=false;
+    });
+  }
+
+  //funções de callback da popup de três botões
+  Future<void> _goToMoveState(QuerySnapshot querySnapshot) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    MoveClass _moveClass = MoveClass();
+    Map<String, dynamic> map = querySnapshot.docs[indexPosition].data();
+    _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+    _moveClass = await MoveClass().getTheCoordinates(_moveClass, _moveClass.enderecoOrigem, _moveClass.enderecoDestino).whenComplete(() {
+
+      setState(() {
+        isLoading=false;
+      });
+
+      Navigator.of(context).pop();
+      Navigator.push(context, MaterialPageRoute(
+          builder: (context) => MoveDayPage(_moveClass)));
+
+    });
+
+  }
+
+  void _alreadyFinish(){
+    setState(() {
+      isLoading=false;
+    });
+    //ir para avaliação
+  }
+
+  void _latter(){
+    setState(() {
+      isLoading=false;
+    });
+  }
+
+
+
 
   Widget ListLine(Map map){
 
@@ -607,10 +677,16 @@ class HomePageState extends State<HomePage> {
 
   Future<void> checkIfExistMovegoingNow(QuerySnapshot querySnapshot) async {
 
+    _querySnapshot = querySnapshot;
+
     int i = 0;
     while(i<querySnapshot.size){
 
-      if(querySnapshot.docs[i]['situacao'] == 'accepted'){
+      indexPosition=i;
+
+      //caso esteja pago, procedimenros abaixo
+      if(querySnapshot.docs[i]['situacao'] == 'pago'){
+
 
         DateTime scheduledDate = DateUtils().convertDateFromString(querySnapshot.docs[i]['selectedDate']);
         DateTime scheduledDateAndTime = DateUtils().addMinutesAndHoursFromStringToAdate(scheduledDate, querySnapshot.docs[i]['selectedTime']);
@@ -619,9 +695,15 @@ class HomePageState extends State<HomePage> {
         if(dif.isNegative) {
           //a data já expirou
 
-          MoveClass _moveClass = MoveClass();
-          Map<String, dynamic> map = querySnapshot.docs[i].data();
-          _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+
+          setState(() {
+            popupStrTitle='Você possui uma mudança acontecendo agora';
+            popupStrTxt='Você possui uma mudança agendada para às '+querySnapshot.docs[i]['selectedTime']+'.';
+            showCustomPopup=true;
+          });
+
+
 
           /*
           Future.delayed(Duration(seconds: 5)).then((_) {
@@ -634,7 +716,12 @@ class HomePageState extends State<HomePage> {
 
         } else if(dif<=60 && dif>15){
 
-          _displaySnackBar(context, "Você possui uma mudança agendada às "+querySnapshot.docs[i]['selectedTime']);
+          setState(() {
+            popupStrTitle='Atenção';
+            popupStrTxt='Você possui uma mudança agendada para agora mas o usuário ainda não realizou o pagamento. Aconselhamos aguardar e só iniciar o serviço quando o pagamento for confirmado.';
+            showCustomPupUp1Btn=true;
+          });
+          //_displaySnackBar(context, "Você possui uma mudança agendada às "+querySnapshot.docs[i]['selectedTime']);
 
         } else if(dif<=15){
           //ta na hora da mudança. Abrir a pagina de mudança
@@ -650,6 +737,65 @@ class HomePageState extends State<HomePage> {
 
 
           });
+
+
+        } else {
+
+          //do nothing, falta mt ainda
+
+        }
+
+
+
+      }
+
+
+      //caso esteja aceito mas o user ainda não pagou
+      if(querySnapshot.docs[i]['situacao'] == 'accepted'){
+
+        DateTime scheduledDate = DateUtils().convertDateFromString(querySnapshot.docs[i]['selectedDate']);
+        DateTime scheduledDateAndTime = DateUtils().addMinutesAndHoursFromStringToAdate(scheduledDate, querySnapshot.docs[i]['selectedTime']);
+        final dif = DateUtils().compareTwoDatesInMinutes(DateTime.now(), scheduledDateAndTime);
+
+        if(dif.isNegative) {
+
+          popupStrTitle='Você possui uma mudança agora';
+          popupStrTxt='Você possui uma mudança agendada para às '+querySnapshot.docs[i]['selectedTime']+'. No entanto usuário ainda não efetuou o pagamento. Sugerimos não iniciar o processo enquanto o pagamento não for confirmado. Você pode cancelar esta mudança sem punições.';
+          setState(() {
+            //exibe a popup informando que está na hora mas o user ainda n pagou
+
+            showCustomPupUp1Btn=true;
+          });
+          
+
+        } else if(dif<=60 && dif>15){
+
+          //exibe a popup informando que está na hora mas o user ainda n pagou
+          popupStrTitle='Você possui uma mudança daqui a pouco';
+          popupStrTxt='Você possui uma mudança agendada para às '+querySnapshot.docs[i]['selectedTime']+'. No entanto usuário ainda não efetuou o pagamento. Sugerimos não iniciar o processo enquanto o pagamento não for confirmado.';
+          showCustomPupUp1Btn=true;
+
+        } else if(dif<=15){
+
+          //exibe a popup informando que está na hora mas o user ainda n pagou
+          popupStrTitle='Você possui uma mudança daqui a pouco';
+          popupStrTxt='Você possui uma mudança agendada para às '+querySnapshot.docs[i]['selectedTime']+'. No entanto usuário ainda não efetuou o pagamento. Sugerimos não iniciar o processo enquanto o pagamento não for confirmado.';
+          showCustomPupUp1Btn=true;
+          //ta na hora da mudança. Abrir a pagina de mudança
+          /*
+          MoveClass _moveClass = MoveClass();
+          Map<String, dynamic> map = querySnapshot.docs[i].data();
+          _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+          _moveClass = await MoveClass().getTheCoordinates(_moveClass, _moveClass.enderecoOrigem, _moveClass.enderecoDestino).whenComplete(() {
+
+            Navigator.of(context).pop();
+            Navigator.push(context, MaterialPageRoute(
+                builder: (context) => MoveDayPage(_moveClass)));
+          });
+           */
+          
+          
 
 
         } else {
