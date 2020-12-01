@@ -78,6 +78,8 @@ flutter:
     - images/carrinhobaby.jpg
     - images/caminhaozinho.jpg
     - images/markerico.png
+    - images/positive.png
+    - images/negative.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

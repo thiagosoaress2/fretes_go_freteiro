@@ -9,7 +9,8 @@ class UserModel extends Model {
   String _image="";
   String _apelido="";
   String _phone="";
-  double _aval = 0.0;
+  double _rate = 0.0;
+  int _aval = 0;
   String _vehicle="";
   String _vehicle_image="";
   String _placa="";
@@ -78,17 +79,25 @@ class UserModel extends Model {
 
   get Phone=>_phone;
 
-  void updateAval(double value) {
+  void updateRate(double value) {
+    _rate = value;
+    notifyListeners();
+  }
+
+  get Rate=>_rate;
+
+  void updateVehicle(String value) {
+    _vehicle = value;
+    notifyListeners();
+  }
+
+  void updateAval(int value) {
     _aval = value;
     notifyListeners();
   }
 
   get Aval=>_aval;
 
-  void updateVehicle(String value) {
-    _vehicle = value;
-    notifyListeners();
-  }
 
   get Vehicle=>_vehicle;
 
@@ -194,7 +203,7 @@ class UserModel extends Model {
     _latLong=0.0;
     _phone="";
     _apelido="";
-    _aval=0.0;
+    _rate=0.0;
     _vehicle="";
     _vehicle_image="";
     _placa="";

@@ -4,9 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:fretes_go_freteiro/classes/avaliation_class.dart';
+import 'package:fretes_go_freteiro/classes/banishment_class.dart';
 import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:fretes_go_freteiro/utils/date_utils.dart';
 import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 
 
@@ -19,6 +22,9 @@ class FirestoreServices {
   static final String agendamentosPath = 'agendamentos_aguardando';
   static final String truckerCancelmentsNotifyPath = 'notificacoes_cancelamento';
   static final String truckerPath = 'truckers';
+  static final String avaliationPath = 'users';
+  static final String punishmentPath = 'freteiros_em_punicao';
+  static final String banishmentPath = 'freteiros_banidos';
 
 
   Future<void> createNewUser(String name, String email, String uid) {
@@ -31,6 +37,9 @@ class FirestoreServices {
       'name': name,
       'email': email,
       'all_info_done' : 99,
+      'rate' : 0.0,
+      'aval' : 0,
+      'banido' : false,
     })
         .then((value) {
       userModel.updateFullName(name);
@@ -265,7 +274,7 @@ class FirestoreServices {
         //latitude e longitude nao pegamos pq n tem na classe usermodel
         userModel.updateLatLoong(documentSnapshot['latlong']);
         userModel.updateImage(documentSnapshot['image']);
-        userModel.updateAval(documentSnapshot['aval']);
+        userModel.updateRate(documentSnapshot['rate']);
         userModel.updateAllInfoDone(documentSnapshot['all_info_done']);
         //SharedPrefsUtils().updateAllInfoDone(documentSnapshot['all_info_done']);
         
@@ -339,6 +348,150 @@ class FirestoreServices {
     }).catchError((error) => onFail());
   }
 
+  Future<void> truckerQuitBecauseOfOutageOfPayment(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
+
+    CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    return users
+        .doc(moveId)
+        .update({
+      'situacao' : "quit",
+      'id_freteiro' : null,
+      'nome_freteiro' : null,
+
+    }).then((value) {
+      onSucess();
+    }).catchError((error) => onFail());
+  }
+
+  Future<void> quitJobAfterPayment(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
+
+    CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    return users
+        .doc(moveId)
+        .update({
+      'situacao' : "trucker_quit_after_payment",
+      'id_freteiro' : null,
+      'nome_freteiro' : null,
+
+    }).then((value) {
+      onSucess();
+    }).catchError((error) => onFail());
+
+  }
+
+  Future<void> createPunishmentEntry(String truckerId, String motivo){
+
+    CollectionReference path = FirebaseFirestore.instance.collection(punishmentPath);
+
+    path.doc(truckerId).set({
+      'trucker' : truckerId,
+      'motivo' : motivo,
+      'data' : DateUtils().giveMeTheDateToday(),
+      'hora' : DateUtils().giveMeTheTimeNow(),
+
+    });
+
+  }
+
+
+  //funções de banimento
+  Future<void> createBanishmentEntry(String truckerId, String motivo, int tempoBanimento){
+
+    CollectionReference path = FirebaseFirestore.instance.collection(banishmentPath);
+
+    path.doc(truckerId).set({
+      'trucker' : truckerId,
+      'motivo' : motivo,
+      'data' : DateUtils().giveMeTheDateToday(),
+      'hora' : DateUtils().giveMeTheTimeNow(),
+      'tempo_banimento' : tempoBanimento
+
+    }).then((value) { banish(truckerId); });
+
+  }
+
+  Future<void> banish(String truckerId){
+
+    CollectionReference path = FirebaseFirestore.instance.collection(truckerPath);
+
+    path.doc(truckerId).update({
+
+      'banido' : true,
+
+    });
+  }
+
+  Future<void> unbanish(String truckerId){
+
+    CollectionReference path = FirebaseFirestore.instance.collection(truckerPath);
+
+    path.doc(truckerId).update({
+
+      'banido' : false,
+
+    });
+  }
+
+  Future<void> checkIfUserIsBanished(String truckerId, [VoidCallback isBanished(), VoidCallback notBanished(), VoidCallback onFail()]){
+
+    bool banido=false;
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(truckerId)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        banido = documentSnapshot['banido'];
+
+        if(banido==true){
+          isBanished();
+        } else {
+          notBanished();
+        }
+
+      } else {
+        onFail();
+      }
+    });
+
+  }
+
+  Future<void> getBanishmentInfo(String truckerId, BanishmentClass banishmentClass, VoidCallback onSucess(), VoidCallback onFail()){
+
+    FirebaseFirestore.instance
+        .collection(banishmentPath)
+        .doc(truckerId)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        banishmentClass.motivo = documentSnapshot['motivo'];
+        banishmentClass.data = documentSnapshot['data'];
+        banishmentClass.hora = documentSnapshot['hora'];
+        banishmentClass.tempo_banimento = documentSnapshot['tempo_banimento'];
+
+        onSucess();
+
+      } else {
+        onFail();
+      }
+    });
+
+  }
+
+  Future<void> removeBanishmentInfo(String truckerId){
+
+    FirebaseFirestore.instance
+        .collection(banishmentPath)
+        .doc(truckerId)
+        .delete().then((value) {unbanish(truckerId); });
+
+  }
+
+
   Future<void> updateAlertView(id){
 
     CollectionReference alert = FirebaseFirestore.instance.collection(agendamentosPath);
@@ -392,7 +545,7 @@ class FirestoreServices {
         .then((DocumentSnapshot documentSnapshot) {
       if (documentSnapshot.exists) {
 
-        moveClass.ajudantes = documentSnapshot['ajudante'];
+        moveClass.ajudantes = documentSnapshot['ajudantes'];
         moveClass.carro = documentSnapshot['carro'];
         moveClass.enderecoOrigem = documentSnapshot['endereco_origem'];
         moveClass.enderecoDestino = documentSnapshot['endereco_destino'];
@@ -408,6 +561,112 @@ class FirestoreServices {
         moveClass.preco = documentSnapshot['valor'];
 
         return moveClass;
+      } else {
+        onFail();
+      }
+    });
+
+
+  }
+
+  Future<void> loadMoveSituation(MoveClass moveClass, VoidCallback onSucess(), VoidCallback onFail()){
+
+    FirebaseFirestore.instance
+        .collection(agendamentosPath)
+        .doc(moveClass.idPedido)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        moveClass.situacao = documentSnapshot['situacao'];
+
+        onSucess();
+      } else {
+        onFail();
+      }
+    });
+
+  }
+
+  Future<void> updateMoveSituation(String newSituation, String moveId, [@required VoidCallback onSucess(), @required VoidCallback onFail()]){
+
+    CollectionReference update = FirebaseFirestore.instance.collection(agendamentosPath);
+    return update
+        .doc(moveId)
+        .update({
+      'situacao' : newSituation,
+
+    }).then((value) {
+      onSucess();
+    }).catchError((e) => onFail());
+
+  }
+
+  Future<void> updateMoveSituationTruckerQuit(String newSituation, String truckerId, MoveClass moveClass, [@required VoidCallback onSucess(), @required VoidCallback onFail()]){
+
+    //colocando o not depos do id do freteiro vai impedir de aparecer como um job para ele, mesmo que o user nao tenha finalizado ainda.
+    String newId = truckerId+'not';  //no moveClass não tem as infos do motorista
+
+    CollectionReference update = FirebaseFirestore.instance.collection(agendamentosPath);
+    return update
+        .doc(moveClass.idPedido)
+        .update({
+      'situacao' : 'trucker_finished',
+      'id_freteiro' : newId,
+    }).then((value) {
+      createHistoricOfMoves(moveClass);
+      onSucess();
+    }).catchError((e) => onFail());
+
+  }
+
+  Future<void> FinishAmove(MoveClass moveClass, [@required VoidCallback onSuccess, @required VoidCallback onFailure]){
+    CollectionReference move = FirebaseFirestore.instance.collection(agendamentosPath);
+    move.doc(moveClass.idPedido)
+        .delete()
+        .then((value) => createHistoricOfMoves(moveClass)).catchError((onError)=> onFailure());
+  }
+
+  Future<void> createHistoricOfMoves(MoveClass moveClass){
+
+    CollectionReference history = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    history.doc(moveClass.idPedido).set({
+      'user' : moveClass.idPedido,
+      'freteiro' : moveClass.freteiroId,
+      'preco' : moveClass.preco,
+      'origem' : moveClass.enderecoOrigem,
+      'destino' : moveClass.enderecoDestino,
+
+    });
+
+  }
+
+  Future<void> loadMoveClassForTests(String moveId, MoveClass moveClass, @required VoidCallback onFail(), @required VoidCallback onSucess()){
+
+    FirebaseFirestore.instance
+        .collection(agendamentosPath)
+        .doc(moveId)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        moveClass.ajudantes = documentSnapshot['ajudantes'];
+        moveClass.carro = documentSnapshot['carro'];
+        moveClass.enderecoOrigem = documentSnapshot['endereco_origem'];
+        moveClass.enderecoDestino = documentSnapshot['endereco_destino'];
+        moveClass.escada = documentSnapshot['escada'];
+        moveClass.userId = documentSnapshot['id_contratante'];
+        //moveClass.freteiroId = documentSnapshot['id_freteiro'];  >>n precisa, é o user
+        moveClass.lancesEscada = documentSnapshot['lances_escada'];
+        moveClass.idPedido = documentSnapshot['moveId'];
+        moveClass.ps = documentSnapshot['ps'];
+        moveClass.dateSelected = documentSnapshot['selectedDate'];
+        moveClass.timeSelected = documentSnapshot['selectedTime'];
+        //moveClass.situacao = documentSnapshot['situacao'];
+        moveClass.preco = documentSnapshot['valor'];
+
+        onSucess();
       } else {
         onFail();
       }
@@ -448,6 +707,45 @@ class FirestoreServices {
 
     })
         .catchError((error) => onFailure());
+
+  }
+
+  Future<void> loadAvaliationClass(AvaliationClass avaliationClass, @required VoidCallback onSucess()){
+
+    //AvaliationClass avaliationClassHere = avaliationClass;
+
+    FirebaseFirestore.instance
+        .collection(avaliationPath)
+        .doc(avaliationClass.userId)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        avaliationClass.userName = documentSnapshot['name'];
+        avaliationClass.avaliations = documentSnapshot['aval'];
+        avaliationClass.userRate = documentSnapshot['rate'].toDouble();
+
+        onSucess();
+
+      } else {
+
+        return avaliationClass;
+      }
+    });
+
+
+
+  }
+
+  Future<void> saveUserAvaliation(AvaliationClass avaliationClass){
+
+    CollectionReference userLocation = FirebaseFirestore.instance.collection(avaliationPath);
+    return userLocation
+        .doc(avaliationClass.userId)
+        .update({
+      'rate' : avaliationClass.newRate,
+      'aval' : avaliationClass.avaliations+1,
+    });
 
   }
 

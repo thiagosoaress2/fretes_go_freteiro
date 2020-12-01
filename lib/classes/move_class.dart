@@ -169,6 +169,8 @@ class MoveClass {
       formatedSit = "Aguardando sua confirmação";
     } else if(sit == 'accepted'){
       formatedSit = 'Serviço agendado';
+    } else if(sit == 'trucker_finished'){
+      formatedSit = 'Finalizado: Aguardando usuário';
     }
     return formatedSit;
   }

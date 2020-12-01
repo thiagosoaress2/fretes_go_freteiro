@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/classes/move_class.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
+import 'package:fretes_go_freteiro/pages/avaliation_page.dart';
 import 'package:fretes_go_freteiro/pages/home_page.dart';
 import 'package:fretes_go_freteiro/services/firestore_services.dart';
 import 'package:fretes_go_freteiro/utils/widgets_constructor.dart';
@@ -55,6 +56,8 @@ class _MoveDayPageState extends State<MoveDayPage> {
 
   Location location = new Location();
 
+  String truckerId;
+
   @override
   void initState() {
 
@@ -83,6 +86,8 @@ class _MoveDayPageState extends State<MoveDayPage> {
 
     return ScopedModelDescendant<UserModel>(
       builder: (BuildContext context, Widget widget, UserModel userModel){
+
+        truckerId=userModel.Uid;
 
         heightPercent = MediaQuery
             .of(context)
@@ -397,6 +402,21 @@ class _MoveDayPageState extends State<MoveDayPage> {
 
   Widget _confirmFinishMovePopup(){
 
+
+    void _onSucessFinish(){
+      _displaySnackBar(context, 'Pronto! Preparando avaliação');
+
+      Future.delayed(Duration(seconds: 2)).whenComplete(() {
+        Navigator.of(context).pop();
+        Navigator.push(context, MaterialPageRoute(
+            builder: (context) => AvaliationPage(moveClass)));
+      });
+    }
+
+    void _onFailFinish(){
+      _displaySnackBar(context, "Ocorreu um erro. Verifique sua internet e tente novamente");
+    }
+
     return GestureDetector(
       onTap: (){
         setState(() {
@@ -430,7 +450,28 @@ class _MoveDayPageState extends State<MoveDayPage> {
                 WidgetsConstructor().makeText("Você tem certeza que deseja encerrar esta mudança e avaliar o cliente?", Colors.blue, 18.0, 0.0, 20.0, 'center'),
                 GestureDetector(
                   onTap: (){
-                    print('click do botão');
+
+                    void _onSucess(){
+                      if(moveClass.situacao=='user_finished'){
+                        //pode apagar
+                        FirestoreServices().FinishAmove(moveClass); //aqui apaga e cria um histórico
+                      } else {
+                        FirestoreServices().updateMoveSituationTruckerQuit('trucker_finished',truckerId ,moveClass, () {_onSucessFinish();}, () {_onFailFinish();});
+                      }
+
+                    }
+
+                    void _onFail(){
+
+                      _displaySnackBar(context, "Ops, ocorreu um erro");
+                      setState(() {
+                        isLoading=false;
+                      });
+                    }
+
+                    //carrega situação atual
+                    FirestoreServices().loadMoveSituation(moveClass, () {_onSucess();}, () { _onFail();});
+
                   },
                   child: WidgetsConstructor().makeButton(Colors.blue, Colors.white, widthPercent*0.5, 60.0, 2.0, 4.0, 'Finalizar', Colors.white, 18.0),
                 )

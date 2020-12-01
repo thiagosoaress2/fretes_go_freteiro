@@ -241,7 +241,7 @@ class WidgetsConstructor {
     //WidgetsConstructor().customPopUp('title', 'text', widthPercent,  () {_onPressPopup();}, () {_onPressPopupCancel();})
 
     return Positioned(
-        top: heightPercent*0.25,
+        top: heightPercent*0.15,
         right: 0.5,
         left: 0.5,
         child: Row(
@@ -291,7 +291,6 @@ class WidgetsConstructor {
                             child: makeText(btnOkText??'Ok', Colors.white, 16.0, 0.5, 0.5, 'center'),),
 
                         ),
-
 
                       ],
                     )
@@ -475,7 +474,7 @@ class WidgetsConstructor {
                               elevation: 4.0,
                               splashColor: Colors.grey[100],
                               color: btn3Color,
-                              child: makeText(btn2Text, Colors.white, 16.0, 0.5, 0.5, 'center'))
+                              child: makeText(btn3Text, Colors.white, 16.0, 0.5, 0.5, 'center'))
                           ,
                         ),
 
