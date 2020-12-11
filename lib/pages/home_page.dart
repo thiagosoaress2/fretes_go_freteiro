@@ -27,6 +27,7 @@ import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:date_format/date_format.dart';
 import 'package:async/async.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -311,7 +312,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                                   ? WidgetsConstructor().customPopUp1Btn('Atenção', 'Você tinha uma mudança às'+_querySnapshot.docs[indexPosition]['selectedTime']+' do dia '+_querySnapshot.docs[indexPosition]['selectedDate']+'. Como o usuário não efetuou o pagamento NÓS estamos cancelando esta mudança.', Colors.blue, widthPercent, heightPercent,
                                   () {_accepted_passouMuito_cancelar();})
                                   : popUpsCode=='accepted_reminder'
-                                    ? WidgetsConstructor().customPopUp1Btn('Lembrete', 'Você tem uma mudança agendada para daqui a pouco às'+_querySnapshot.docs[indexPosition]['selectedTime']+'. No entanto o usuário ainda não efetuou o pagamento. Sugerimos não iniciar o processo enquanto o pagamento não for confirmado.', Colors.blue, widthPercent, heightPercent,
+                                    ? WidgetsConstructor().customPopUp1Btn('Lembrete', 'Você tem uma mudança agendada para daqui a pouco às '+_querySnapshot.docs[indexPosition]['selectedTime']+'. No entanto o usuário ainda não efetuou o pagamento. Sugerimos não iniciar o processo enquanto o pagamento não for confirmado.', Colors.blue, widthPercent, heightPercent,
                                     () {_accepted_reminder();})
                                     : popUpsCode=='accepted_moveTime'
                                       ? WidgetsConstructor().customPopUp('Atenção', 'Existe uma mudança que inicia às'+_querySnapshot.docs[indexPosition]['selectedTime']+'. No entanto o usuário ainda não efetuou o pagamento. Você pode optar por aguardar ou cancelar esta mudança..', 'Aguardar', 'Cancelar mudança', widthPercent, heightPercent,
@@ -322,7 +323,9 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                                           ? WidgetsConstructor().customPopUp('Atenção', 'O cliente informou que você ainda não finalizou o serviço.', 'Vou voltar para terminar', 'Não vou voltar e concordo não receberei pelo serviço', widthPercent, heightPercent, () {_user_informed_truckerDidntFinishedMoveTruckerIsCommingBack(_querySnapshot.docs[indexPosition]['moveId'], userModel);}, () {_user_informed_truckerDidntFinishedMoveCancel(userModel.Uid, _querySnapshot.docs[indexPosition]['moveId']);})
                                             : popUpsCode=='user_informs_trucker_didnt_make_move'
                                               ? WidgetsConstructor().customPopUp1Btn('Atenção', "O cliente informou que o serviço não foi prestado. Nós iremos devolver o dinheiro ao usuário e você fica banido da plataforma por "+(GlobalsConstants.banishementTime2*7).toString()+" dias.", Colors.red, widthPercent, heightPercent, () { _user_informed_truckerDidndShowUp(userModel.Uid, _querySnapshot.docs[indexPosition]['moveId']);})
-                                              : Container(),
+                                               : popUpsCode=='user_finished'
+                                                ? WidgetsConstructor().customPopUp('Mudança finalizada', 'O cliente confirmou que a mudança terminou. Caso já tenha terminado sua parte, finalize também para avaliar e encerrar o serviço.', 'Finalizar', 'Cancelar', widthPercent, heightPercent, () { _userFinishedAndAvaliatedMove(_querySnapshot);} , () {_accepted_reminder();} )
+                                                : Container(),
 
 
                     isLoading==true
@@ -363,10 +366,6 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
 
 
-
-
-
-
   Future<void> checkIfExistMovegoingNow(QuerySnapshot querySnapshot, UserModel userModel) async {
 
     /*
@@ -392,12 +391,13 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         indexPosition=i;
 
         //caso o user tenha relatado problemas
-        if(querySnapshot.docs[i]['situacao'] == 'user_informs_trucker_didnt_make_move'){
+        if(querySnapshot.docs[i]['situacao'] == GlobalsConstants.sitUserInformTruckerDidntMakeMove){
           setState(() {
-            popUpsCode='user_informs_trucker_didnt_make_move';
+            //popUpsCode='user_informs_trucker_didnt_make_move';
+            popUpsCode=GlobalsConstants.sitUserInformTruckerDidntMakeMove;
           });
         }
-        if(querySnapshot.docs[i]['situacao'] == 'user_informs_trucker_didnt_finished_move'){
+        if(querySnapshot.docs[i]['situacao'] == GlobalsConstants.sitUserInformTruckerDidntFinishedMove){
           setState(() {
             popUpsCode='user_informs_trucker_didnt_finished_move';
           });
@@ -418,6 +418,12 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
           FirestoreServices().loadMoveClass(userModel, moveClass, () { _onSucess();});
 
+        }
+
+        if(querySnapshot.docs[i]['situacao'] == 'user_finished'){
+          setState(() {
+            popUpsCode='user_finished'; //usuario finalizou a mudança
+          });
         }
 
         //caso esteja pago, procedimenros abaixo
@@ -565,9 +571,12 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
      */
   }
-  /*
-  FUNCOES DE CALLBACK PARA CADA SITUAÇÃO QUE EXIBE POPUP
-   */
+
+
+
+
+  //FUNCOES DE CALLBACK PARA CADA SITUAÇÃO QUE EXIBE POPUP
+
 
   //opção 1 - mudança tá paga, mas já passou. Exibe opções abaixo
   //popUpsCode=='pago_little_negative'
@@ -864,10 +873,36 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   }
 
+  Future<void> _userFinishedAndAvaliatedMove(QuerySnapshot querySnapshot) async {
 
-  /*
-  FIM DAS FUNÇÕES DE CALLBACK DOS POPUPS
-   */
+    setState(() {
+      isLoading = true;
+    });
+
+    _displaySnackBar(context, 'Encerrando mudança e carregando sistema de avaliação');
+
+    MoveClass _moveClass = MoveClass();
+    Map<String, dynamic> map = querySnapshot.docs[indexPosition].data();
+    _moveClass = MoveClass().passDataFromQuerySnapshotToMoveClass(map);
+
+    _moveClass = await MoveClass().getTheCoordinates(_moveClass, _moveClass.enderecoOrigem, _moveClass.enderecoDestino).whenComplete(() {
+
+      setState(() {
+        isLoading=false;
+      });
+
+      Navigator.of(context).pop();
+      Navigator.push(context, MaterialPageRoute(
+          builder: (context) => AvaliationPage(_moveClass)));
+
+    });
+
+  }
+
+
+
+  //FIM DAS FUNÇÕES DE CALLBACK DOS POPUPS
+
 
 
 
@@ -1328,6 +1363,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
     checkIfUserBanishmentIsOver(userModel);
 
+
     /*
     //somente para testes de avaliation page - a info que vai é de moveClass poiis vai vir depois da mudança
     MoveClass moveClass = MoveClass();
@@ -1361,7 +1397,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
       //obs: se pageDone == 1 significa que vai abrir a página 2 (a 1 está ok). Os dados são carregados abaixo para ficarem acessiveis no entanto eles n correpsondem a página 2.
       //carregue os dados da pagina então, que ja foi preenchida em outro momento
-      SharedPrefsUtils().loadPageOneInfo(userModel);
+      //SharedPrefsUtils().loadPageOneInfo(userModel);
+      loadPageOneInfo(userModel);
 
       //exibe um dialog pro user escolher
       Alert(
@@ -1401,8 +1438,10 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       //SharedPrefsUtils().loadPageOneInfo(userModel);
       //goToPage2OfUserInfos(context);
     } else if(pageDone==2) {
-      //SharedPrefsUtils().loadPageOneInfo(userModel);
-
+     
+      SharedPrefsUtils().loadPageOneInfo(userModel);
+      //n precisa carregar dados pois é só a cnh
+      
       //exibe um dialog pro user escolher
       Alert(
         context: context,
@@ -1437,6 +1476,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
     } else if(pageDone==3){
 
+      SharedPrefsUtils().loadPageOneInfo(userModel);
+      SharedPrefsUtils().loadPageThreeInfo(userModel);
       //exibe um dialog pro user escolher
       Alert(
         context: context,
@@ -1616,6 +1657,25 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
     Navigator.of(context).pop();
     Navigator.push(context, MaterialPageRoute(
         builder: (context) => TruckerInfosCadBankData()));
+  }
+
+
+
+  Future<void> loadPageOneInfo(UserModel userModel) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String value = (prefs.getString('image').toString());
+    userModel.updateImage(value);
+    value = (prefs.getString('apelido').toString());
+    userModel.updateApelido(value);
+    double value2 = (prefs.getDouble('latlong'));
+    userModel.updateLatLoong(value2);
+    value = (prefs.getString('phone').toString());
+    userModel.updatePhone(value);
+    value = (prefs.getString('address').toString());
+    userModel.updateAddress(value);
+
   }
 
 }

@@ -88,7 +88,7 @@ class _AvaliationPageState extends State<AvaliationPage> with AfterLayoutMixin<A
             children: [
 
               showLandPage==true
-                  ? _landPage() : Container(),
+                  ? _landPage(userModel) : Container(),
 
               showCompleteAvaliation==true
                   ? _avaliationPage() : Container(),
@@ -111,10 +111,10 @@ class _AvaliationPageState extends State<AvaliationPage> with AfterLayoutMixin<A
   }
 
   //PAGES
-  Widget _landPage(){
+  Widget _landPage(UserModel userModel){
 
     void _onConfirmPopup(){
-      _quickAvaliation(avaliation, widget.moveClass);
+      _quickAvaliation(avaliation, widget.moveClass, userModel);
       setState(() {
         showConfirmationPopup=false;
       });
@@ -400,7 +400,7 @@ class _AvaliationPageState extends State<AvaliationPage> with AfterLayoutMixin<A
 
   }
 
-  void _quickAvaliation(double avaliation, MoveClass moveClass){
+  void _quickAvaliation(double avaliation, MoveClass moveClass, UserModel userModel){
     _avaliationClass.newRate = AvaliationClass.Empty().calculateAvaliation(avaliation, _avaliationClass.avaliations, _avaliationClass.userRate);
     FirestoreServices().saveUserAvaliation(_avaliationClass);
 
@@ -408,7 +408,7 @@ class _AvaliationPageState extends State<AvaliationPage> with AfterLayoutMixin<A
     if(moveClass.situacao=='user_finished'){
       FirestoreServices().FinishAmove(moveClass); //aqui apaga e cria um histórico
     } else {
-      FirestoreServices().updateMoveSituationTruckerQuit('trucker_finished', moveClass.freteiroId, moveClass);
+      FirestoreServices().updateMoveSituationTruckerQuit('trucker_finished', userModel.Uid, moveClass);
 
     }
 

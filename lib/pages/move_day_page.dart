@@ -451,6 +451,13 @@ class _MoveDayPageState extends State<MoveDayPage> {
                 GestureDetector(
                   onTap: (){
 
+                    Navigator.of(context).pop();
+                    Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => AvaliationPage(moveClass)));
+
+
+
+                    /*
                     void _onSucess(){
                       if(moveClass.situacao=='user_finished'){
                         //pode apagar
@@ -472,6 +479,8 @@ class _MoveDayPageState extends State<MoveDayPage> {
                     //carrega situação atual
                     FirestoreServices().loadMoveSituation(moveClass, () {_onSucess();}, () { _onFail();});
 
+
+                     */
                   },
                   child: WidgetsConstructor().makeButton(Colors.blue, Colors.white, widthPercent*0.5, 60.0, 2.0, 4.0, 'Finalizar', Colors.white, 18.0),
                 )

@@ -38,7 +38,7 @@ class SharedPrefsUtils {
 
   }
 
-  Future<void> savePageOneInfo(UserModel userModel) async {
+  Future<void> savePageOneInfo(UserModel userModel, int pageDone) async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -47,7 +47,11 @@ class SharedPrefsUtils {
     await prefs.setDouble('latlong', userModel.LatLong);
     await prefs.setString('phone', userModel.Phone);
     await prefs.setString('address', userModel.Address);
-    await prefs.setInt('all_info_done', 1);
+    //se ele já tiver preenchido outras páginas pageDone será 2, ou 3...isto significa que ele só está atualizando, então tem que manter o pageDone na página que está.
+    if(pageDone<1){
+      await prefs.setInt('all_info_done', 1);
+    }
+
 
   }
 
@@ -80,6 +84,25 @@ class SharedPrefsUtils {
     userModel.updatePhone(value);
     value = (prefs.getString('address').toString());
     userModel.updateAddress(value);
+
+  }
+
+  Future<UserModel> loadPageOneInfoWithReturn(UserModel userModel) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String value = (prefs.getString('image').toString());
+    userModel.updateImage(value);
+    value = (prefs.getString('apelido').toString());
+    userModel.updateApelido(value);
+    double value2 = (prefs.getDouble('latlong'));
+    userModel.updateLatLoong(value2);
+    value = (prefs.getString('phone').toString());
+    userModel.updatePhone(value);
+    value = (prefs.getString('address').toString());
+    userModel.updateAddress(value);
+
+    return userModel;
 
   }
 

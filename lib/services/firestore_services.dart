@@ -25,6 +25,9 @@ class FirestoreServices {
   static final String avaliationPath = 'users';
   static final String punishmentPath = 'freteiros_em_punicao';
   static final String banishmentPath = 'freteiros_banidos';
+  static final String bankPath = 'freteiros_bank';
+  static final String historicPathUsers = 'historico_mudancas_users';
+  static final String historicPathTrucker = 'historico_mudancas_truckers';
 
 
   Future<void> createNewUser(String name, String email, String uid) {
@@ -114,6 +117,11 @@ class FirestoreServices {
     });
   }
 
+
+
+
+
+  //METODOS DE CADASTRO APÓS O LOGIN - NOME, APELIDO, CNH E BANCO
   //metodo que salva a primeira parte das infos do freteiro
   Future<void> saveUserInfo(String uid, double latitude, double longitude, String _apelido, String _phone,
       String _address, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
@@ -286,8 +294,49 @@ class FirestoreServices {
 
   }
 
+  Future<void> saveBankInfo(@required UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
+
+    CollectionReference userLocation = FirebaseFirestore.instance.collection(bankPath);
+    return userLocation
+        .doc(userModel.Uid)
+        .update({
+      'conta_nome' : userModel.NameAcountOwner,
+      'conta_agencia' : userModel.Agency,
+      'conta_conta' : userModel.Acount,
+      'conta_digito' : userModel.Digit,
+      'conta_tipo' : userModel.AcountType,
+      'conta_banco' : userModel.Bank,
+      'conta_cpf' : userModel.CpfAcountOwner,
+    })
+        .then((value) {
+
+      onSucess();
+
+    })
+        .catchError((error) => onFailure());
+
+  }
+
   Future<void> placeUserInSearch(bool isNew, UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
+    CollectionReference placeForSearch = FirebaseFirestore.instance.collection('truckers');
+    await SharedPrefsUtils().loadPageOneInfo(userModel);
+
+    placeForSearch
+        .doc(userModel.Uid)
+        .update({
+      'listed' : true,
+      'banido' : false,
+    }).then((value) {
+
+      onSucess();
+
+    })
+        .catchError((onError){
+          onFailure();
+    });
+
+    /*
     CollectionReference placeForSearch = FirebaseFirestore.instance.collection(userModel.Vehicle);
 
     await SharedPrefsUtils().loadPageOneInfo(userModel);
@@ -316,8 +365,18 @@ class FirestoreServices {
           .catchError((onError)=> onFailure());
 
     }
-  }
+   */
 
+  }
+  //METODOS DE CADASTRO APÓS O LOGIN - NOME, APELIDO, CNH E BANCO
+
+
+
+
+
+
+
+  //METODOS QUE LIDAM COM ACEITAR, DESISTIR OU SER PUNIDO
   Future<void> confirmJobAceptance(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
 
     CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
@@ -394,8 +453,10 @@ class FirestoreServices {
     });
 
   }
+  //METODOS QUE LIDAM COM ACEITAR, DESISTIR OU SER PUNIDO
 
 
+  //ESPECIFICOS DE BANIMENTO
   //funções de banimento
   Future<void> createBanishmentEntry(String truckerId, String motivo, int tempoBanimento){
 
@@ -490,6 +551,8 @@ class FirestoreServices {
         .delete().then((value) {unbanish(truckerId); });
 
   }
+  //ESPECIFICOS DE BANIMENTO
+
 
 
   Future<void> updateAlertView(id){
@@ -536,6 +599,10 @@ class FirestoreServices {
 
   }
 
+
+
+
+  //FUNCOES DE MUDANÇA
   Future<MoveClass> loadMoveClass(UserModel userModel, MoveClass moveClass, @required VoidCallback onFail()){
 
     FirebaseFirestore.instance
@@ -629,14 +696,36 @@ class FirestoreServices {
 
   Future<void> createHistoricOfMoves(MoveClass moveClass){
 
-    CollectionReference history = FirebaseFirestore.instance.collection(agendamentosPath);
+    CollectionReference history = FirebaseFirestore.instance.collection(historicPathUsers);
 
+    //cria historico do user
     history.doc(moveClass.idPedido).set({
       'user' : moveClass.idPedido,
       'freteiro' : moveClass.freteiroId,
       'preco' : moveClass.preco,
       'origem' : moveClass.enderecoOrigem,
       'destino' : moveClass.enderecoDestino,
+      'data' : DateUtils().giveMeTheDateToday(),
+      'hora' : DateUtils().giveMeTheTimeNow(),
+
+    }).then((value) => createHistoricOfMovesToTrucker(moveClass));
+
+  }
+
+
+  Future<void> createHistoricOfMovesToTrucker(MoveClass moveClass){
+
+    CollectionReference history = FirebaseFirestore.instance.collection(historicPathTrucker);
+
+    //cria historico do trucker
+    history.doc(moveClass.freteiroId).set({
+      'user' : moveClass.idPedido,
+      'freteiro' : moveClass.freteiroId,
+      'preco' : moveClass.preco,
+      'origem' : moveClass.enderecoOrigem,
+      'destino' : moveClass.enderecoDestino,
+      'data' : DateUtils().giveMeTheDateToday(),
+      'hora' : DateUtils().giveMeTheTimeNow(),
 
     });
 
@@ -674,6 +763,9 @@ class FirestoreServices {
 
 
   }
+  //FUNCOES DE MUDANÇA
+
+
 
   Future<void> saveLastUserLocation(String moveId, double latitude, double longitude){
 
@@ -687,29 +779,9 @@ class FirestoreServices {
 
   }
 
-  Future<void> saveBankInfo(@required UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
 
-    CollectionReference userLocation = FirebaseFirestore.instance.collection(truckerPath);
-    return userLocation
-        .doc(userModel.Uid)
-        .update({
-      'conta_nome' : userModel.NameAcountOwner,
-      'conta_agencia' : userModel.Agency,
-      'conta_conta' : userModel.Acount,
-      'conta_digito' : userModel.Digit,
-      'conta_tipo' : userModel.AcountType,
-      'conta_banco' : userModel.Bank,
-      'conta_cpf' : userModel.CpfAcountOwner,
-    })
-        .then((value) {
 
-      onSucess();
-
-    })
-        .catchError((error) => onFailure());
-
-  }
-
+  //AVALIACOES
   Future<void> loadAvaliationClass(AvaliationClass avaliationClass, @required VoidCallback onSucess()){
 
     //AvaliationClass avaliationClassHere = avaliationClass;
@@ -748,6 +820,10 @@ class FirestoreServices {
     });
 
   }
+  //AVALIACOES
+
+
+
 
 }
 

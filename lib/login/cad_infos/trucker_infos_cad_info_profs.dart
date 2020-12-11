@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:fretes_go_freteiro/camera_widgets/take_picture_from_cnh_page.dart';
 import 'package:fretes_go_freteiro/camera_widgets/take_picture_page.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_car_info.dart';
@@ -269,9 +270,12 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
         MaterialPageRoute(
             builder: (context) => TakePicturePage(camera: camera)));
             //builder: (context) => TakePictureFromCnh(camera: camera)));
-    setState(() {
-      attachmentList.add(File(pickedImage));
-      _imageCnh = attachmentList.first;
+
+    attachmentList.add(File(pickedImage));
+    _imageCnh = attachmentList.first;
+
+    setState(() async {
+      _imageCnh = await compressImageEvenMore(_imageCnh);
 
 
       //uploadFile();
@@ -356,6 +360,29 @@ class _TruckerInfosCadInfoProfsState extends State<TruckerInfosCadInfoProfs> {
         });
   }
 
+  Future<File> compressImageEvenMore(File file) async {
+
+    print('comprimindo');
+
+    // Get file path
+    // eg:- "Volume/VM/abcd.jpeg"
+    final filePath = file.absolute.path;
+
+    // Create output file path
+    // eg:- "Volume/VM/abcd_out.jpeg"
+    final lastIndex = filePath.lastIndexOf(new RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+    final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        minWidth: 500,
+        minHeight: 400,
+        quality: 40);
+
+    return compressedImage;
+  }
 
   _displaySnackBar(BuildContext context, String msg) {
 

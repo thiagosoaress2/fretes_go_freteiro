@@ -16,6 +16,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:scoped_model/scoped_model.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 
 //base that works
@@ -51,12 +52,15 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
   String adressFound="";
   double latitude;
   double longitude;
+  bool _changedLatLong=false;
 
   bool isLoading=false;
 
   UserModel userModelGlobal;
 
   bool needCheck=true;
+
+  bool _photoChanged=false;
 
 
   Future<void> loadPageInfo(UserModel userModel) async {
@@ -65,15 +69,19 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     if(pageDone!=99){ //se o dado existe
       await SharedPrefsUtils().loadPageOneInfo(userModel);
 
+      _apelidoController.text = userModel.Apelido.toString();
+      _phoneController.text = userModel.Phone.toString();
+      _adressController.text = userModel.Address.toString();
+      adressFound = userModel.Address.toString();
+      //carrega latlong
+      findAddress(_adressController, true); //true significa que isto está ocorrendo sem o user saber e por isso n exibe feedback na tela como o loading ou a popup
+
       setState(() {
-        _apelidoController.text = userModel.Apelido.toString();
-        _phoneController.text = userModel.Phone.toString();
-        _adressController.text = userModel.Address.toString();
-        adressFound = userModel.Address.toString();
         _uploadedImageProfileFileURL = userModel.Image.toString();
       });
 
     }
+
   }
 
   @override
@@ -92,9 +100,6 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
           loadPageInfo(userModel);
         }
 
-
-        print("uid");
-        print(userModel.Uid);
         return Scaffold(
           key: _scaffoldKey,
           appBar: AppBar(centerTitle: true, title: Text("Informações pessoais")),
@@ -172,7 +177,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
                               currentFocus.unfocus();
                             }
 
-                            findAddress(_adressController);
+                            findAddress(_adressController, false); //false indica que o user cliclou no botão e precisa de feedback na tela como o loading
 
                           },),
                         ),
@@ -242,67 +247,61 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
 
                   SizedBox(height: 50.0,),
 
-                  GestureDetector(
-                    onTap: () async {
+                  Container(
+                    height: 60.0,
+                    width: widthPercent*0.75,
+                    child: RaisedButton(
+                      color: Colors.blue,
+                        child: WidgetsConstructor().makeText('Próximo', Colors.white, 17.0, 0.0, 0.0, 'center'),
+                        splashColor: Colors.lightBlue,
+                        onPressed: () async {
 
-                      if(_apelidoController.text.isEmpty){
-                        _displaySnackBar(context, "Informe o nome ou apelido que deseja usar.");
-                      } else if(_phoneController.text.isEmpty){
-                        _displaySnackBar(context, "Informe o telefone com whatsapp que deseja usar");
-                      } else if(adressFound == "" || adressFound == "nao"){
-                        _displaySnackBar(context, "Informe um endereço válido");
-                      } else if(_imageProfile == null && _uploadedImageProfileFileURL == null){
-                        _displaySnackBar(context, "Precisamos de uma foto sua");
-                      } else if(_adressController.text != adressFound && latitude == null){
-                        _displaySnackBar(context, "Valide o endereço clicando no botão de busca de endereço antes de prosseguir");
-                      } else {
-
-
-                        //ver se mudou algo
-                        int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
-                        if(pageDone==1 || pageDone==2 || pageDone==3){
-                          if(_apelidoController.text == userModel.Apelido && _phoneController.text == userModel.Phone && adressFound == userModel.Address && _uploadedImageProfileFileURL == userModel.Image) {
-
-                            //vai pra proxima página sem salvar nada
-                            //abrir a proxima pagina
-                            Navigator.of(context).pop();
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadInfoProfs()));
-
-                          }
-                        } else {
-
-                          //caso tenha algo para atualizar
-                          double latlong;
-                          if(latitude==null && longitude==null){
-                            latlong = userModel.LatLong;
+                          if(_apelidoController.text.isEmpty){
+                            _displaySnackBar(context, "Informe o nome ou apelido que deseja usar.");
+                          } else if(_phoneController.text.isEmpty){
+                            _displaySnackBar(context, "Informe o telefone com whatsapp que deseja usar");
+                          } else if(adressFound == "" || adressFound == "nao"){
+                            _displaySnackBar(context, "Informe um endereço válido");
+                          } else if(_imageProfile == null && _uploadedImageProfileFileURL == null || _imageProfile == null && _uploadedImageProfileFileURL == 'null'){
+                            _displaySnackBar(context, "Precisamos de uma foto sua");
+                          } else if(_adressController.text != adressFound && latitude == null){
+                            _displaySnackBar(context, "Valide o endereço clicando no botão de busca de endereço antes de prosseguir");
                           } else {
-                            latlong = latitude+longitude;
+
+
+                            //ver se mudou algo
+                            int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+                            if(pageDone==1 || pageDone==2 || pageDone==3 || pageDone==4){
+
+                              //abaixo verifica se tem algo diferente. Se não tiver, significa que o user n mudou nada e n precisa salvar. Ir para proxima página.
+                              if(_apelidoController.text == userModel.Apelido && _phoneController.text == userModel.Phone && adressFound == userModel.Address && _uploadedImageProfileFileURL == userModel.Image && _photoChanged==false) {
+
+                                //vai pra proxima página sem salvar nada
+                                //abrir a proxima pagina
+                                Navigator.of(context).pop();
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => TruckerInfosCadInfoProfs()));
+
+                              } else {
+                                //significa que algo mudou. Vamos salvar tudo novamente
+
+                                //caso tenha algo para atualizar
+                                _prepareDataToSave(userModel);
+
+                              }
+                            } else {
+
+                              //caso tenha algo para atualizar
+                              _prepareDataToSave(userModel);
+
+
+                            }
+
+
                           }
-                          userModel.updateLatLoong(latlong);
-                          userModel.updateApelido(_apelidoController.text);
-                          userModel.updatePhone(_phoneController.text);
-                          userModel.updateAddress(adressFound);
-
-                          //salvar
-                          save(userModel, latitude, longitude, _apelidoController.text, _phoneController.text,
-                              adressFound);
 
 
-                        }
 
-
-                      }
-
-
-                      //aqui precisa salvar as coisas no bd e shared
-                      /*
-                  Navigator.of(context).pop();
-                  Navigator.push(context, MaterialPageRoute(
-                      builder: (context) => TruckerInfosCadInfoProfs()));
-
-                   */
-                    },
-                    child: WidgetsConstructor().makeButton(Colors.blue, Colors.blue, widthPercent*0.75, 50.0, 2.0, 4.0, "Próximo", Colors.white, 16.0),
+                        }),
                   ),
 
 
@@ -318,17 +317,36 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     );
   }
 
-  void save(UserModel userModel, double latitude, double longitude, String apelido, String phone,
-  String adressFound) async {
+  void _prepareDataToSave(UserModel userModel){
 
     setState(() {
       isLoading=true;
     });
 
+    double latlong;
+    if(latitude==null && longitude==null){
+      latlong = userModel.LatLong;
+    } else {
+      latlong = latitude+longitude;
+    }
+    userModel.updateLatLoong(latlong);
+    userModel.updateApelido(_apelidoController.text);
+    userModel.updatePhone(_phoneController.text);
+    userModel.updateAddress(adressFound);
+
+    //salvar
+    save(userModel, latitude, longitude, _apelidoController.text, _phoneController.text,
+        adressFound);
+
+  }
+
+  void save(UserModel userModel, double latitude, double longitude, String apelido, String phone,
+  String adressFound) async {
+
+
     if(_imageProfile==null){
       //esta updatando
-      saveData(userModel.Uid, latitude, longitude, apelido, phone,
-          adressFound);
+      saveData(userModel.Uid, latitude, longitude, apelido, phone, adressFound);
       userModel.updateImage(_uploadedImageProfileFileURL);
 
     } else {
@@ -341,7 +359,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
       StorageUploadTask uploadTask = firebaseStorageRef.putFile(_imageProfile);
       StorageTaskSnapshot taskSnapshot = await uploadTask.onComplete;
       taskSnapshot.ref.getDownloadURL().then(
-              (value) {
+              (value) async {
 
             _uploadedImageProfileFileURL = value;
             saveData(userModel.Uid, latitude, longitude, apelido, phone,
@@ -349,7 +367,8 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
             userModel.updateImage(_uploadedImageProfileFileURL);
 
             //salva no shared.
-            SharedPrefsUtils().savePageOneInfo(userModel);
+            int pageDone = await SharedPrefsUtils().checkIfAdditionalInfoIsDone();
+            SharedPrefsUtils().savePageOneInfo(userModel, pageDone);
 
 
           });
@@ -384,11 +403,14 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
         MaterialPageRoute(
           //builder: (context) => TakePicturePage(camera: camera)));
             builder: (context) => TakePicturePage(camera: camera)));
-    setState(() {
 
-      attachmentList.add(File(pickedImage));
-      _imageProfile = attachmentList.first;
 
+    attachmentList.add(File(pickedImage));
+    _imageProfile = attachmentList.first;
+    _photoChanged=true;
+    setState(() async {
+
+      _imageProfile = await compressImageEvenMore(_imageProfile);
 
       //uploadFile();
     });
@@ -401,7 +423,7 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     });
   }
 
-  void findAddress(TextEditingController controller) async {
+  void findAddress(TextEditingController controller, bool itsAutomatic) async {
 
 
     if(
@@ -411,9 +433,12 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
         controller.text.toString().contains("9")) {
 
 
-      setState(() {
-        isLoading=true;
-      });
+      if(itsAutomatic==false){
+        setState(() {
+          isLoading=true;
+        });
+      }
+
 
       String addressInformed = controller.text;
 
@@ -429,34 +454,50 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
           await getTheCoordinates(adressFound);
 
           //exibe uma popup informando que o endereço foi achado
-          Alert(
-            context: context,
-            type: AlertType.success,
-            title: "Encontramos!",
-            desc: "O endereço foi definido com sucesso. ",
-            buttons: [
-              DialogButton(
-                child: Text(
-                  "Ok",
-                  style: TextStyle(color: Colors.white, fontSize: 20),
-                ),
-                onPressed: () => Navigator.pop(context),
-                width: 120,
-              )
-            ],
-          ).show();
 
-          setState(() {
-            adressFound = adressFound;
-            isLoading=false;
-          });
+          //só vai salvar mudança na latlong se mudar aqui. Dava erro as vezes pois se o user estivesse atualizando apenas e
+          //n mexesse no endereço quando ia salvar nao tinha latlong
+          _changedLatLong=true;
+
+          if(itsAutomatic==false){
+            Alert(
+              context: context,
+              type: AlertType.success,
+              title: "Encontramos!",
+              desc: "O endereço foi definido com sucesso. ",
+              buttons: [
+                DialogButton(
+                  child: Text(
+                    "Ok",
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  width: 120,
+                )
+              ],
+            ).show();
+          }
+
+
+          adressFound = adressFound;
+
+          if(itsAutomatic==false){
+            setState(() {
+
+              isLoading=false;
+            });
+          }
+
 
         } else {
 
-          setState(() {
-            isLoading=false;
-            adressFound = "nao";
-          });
+          adressFound = "nao";
+
+          if(itsAutomatic==false){
+            setState(() {
+              isLoading=false;
+            });
+          }
 
           _displaySnackBar(context, "Especifique melhor o endereço. Estamos encontrando multiplos resultados");
         }
@@ -499,8 +540,9 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
       case "gallery":
 
       /// GALLERY IMAGE PICKER
-        _imageProfile = await ImagePicker.pickImage(
-            source: ImageSource.gallery, imageQuality: 90);
+        _imageProfile = await ImagePicker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+        _imageProfile = await compressImage(_imageProfile);
+        _photoChanged=true;
         break;
 
       case "camera": // CAMERA CAPTURE CODE
@@ -511,12 +553,16 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
 
     if (_imageProfile != null) {
       //print("You selected  image : " + imageFile.path);
+      _photoChanged=true;
+      /*
       setState(() {
         //debugPrint("SELECTED IMAGE PICK   $imageFile");
 
       });
+
+       */
     } else {
-      print("You have not taken image");
+      print("Você não tirou uma foto");
     }
   }
 
@@ -565,6 +611,55 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
         });
   }
 
+  Future<File> compressImage(File file) async {
+
+    print('comprimindo');
+
+    // Get file path
+    // eg:- "Volume/VM/abcd.jpeg"
+    final filePath = file.absolute.path;
+
+    // Create output file path
+    // eg:- "Volume/VM/abcd_out.jpeg"
+    final lastIndex = filePath.lastIndexOf(new RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+    final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        minWidth: 500,
+        minHeight: 500,
+        quality: 70);
+
+    return compressedImage;
+  }
+
+  //compressão maior para foto tirada com a camera...para ficarem em tamanhos semelhantes
+  Future<File> compressImageEvenMore(File file) async {
+
+    print('comprimindo');
+
+    // Get file path
+    // eg:- "Volume/VM/abcd.jpeg"
+    final filePath = file.absolute.path;
+
+    // Create output file path
+    // eg:- "Volume/VM/abcd_out.jpeg"
+    final lastIndex = filePath.lastIndexOf(new RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+    final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        minWidth: 500,
+        minHeight: 500,
+        quality: 50);
+
+    return compressedImage;
+  }
+
   void _onSucess1(){
 
     //chamar salvamentos 2
@@ -572,6 +667,8 @@ class _TruckerInfosCadUserInfoState extends State<TruckerInfosCadUserInfo> {
     setState(() {
       isLoading=false;
     });
+
+
 
     //abrir a proxima pagina
     Navigator.of(context).pop();

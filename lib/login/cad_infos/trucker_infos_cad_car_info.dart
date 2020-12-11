@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:fretes_go_freteiro/camera_widgets/take_picture_page.dart';
 import 'package:fretes_go_freteiro/classes/truck_class.dart';
 import 'package:fretes_go_freteiro/login/cad_infos/trucker_infos_cad_bank_data.dart';
@@ -577,11 +578,13 @@ class _TruckerInfosCadCarInfoState extends State<TruckerInfosCadCarInfo> {
         context,
         MaterialPageRoute(
             builder: (context) => TakePicturePage(camera: camera)));
-    setState(() {
-      attachmentList.add(File(pickedImage));
-      _imageCar = attachmentList.first;
 
+    attachmentList.add(File(pickedImage));
+    _imageCar = attachmentList.first;
 
+    setState(() async {
+
+      _imageCar = await compressImageEvenMore(_imageCar);
       //uploadFile();
     });
     // return result;
@@ -614,8 +617,8 @@ class _TruckerInfosCadCarInfoState extends State<TruckerInfosCadCarInfo> {
       case "gallery":
 
       /// GALLERY IMAGE PICKER
-        _imageCar = await ImagePicker.pickImage(
-            source: ImageSource.gallery, imageQuality: 90);
+        _imageCar = await ImagePicker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+        _imageCar = await compressImageEvenMore(_imageCar);
         break;
 
       case "camera": // CAMERA CAPTURE CODE
@@ -678,6 +681,30 @@ class _TruckerInfosCadCarInfoState extends State<TruckerInfosCadCarInfo> {
             ),
           );
         });
+  }
+
+  Future<File> compressImageEvenMore(File file) async {
+
+    print('comprimindo');
+
+    // Get file path
+    // eg:- "Volume/VM/abcd.jpeg"
+    final filePath = file.absolute.path;
+
+    // Create output file path
+    // eg:- "Volume/VM/abcd_out.jpeg"
+    final lastIndex = filePath.lastIndexOf(new RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+    final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        minWidth: 500,
+        minHeight: 500,
+        quality: 60);
+
+    return compressedImage;
   }
 
   void scrollToBottom() {
