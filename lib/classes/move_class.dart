@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/services/distance_calculation_service.dart';
 import 'package:fretes_go_freteiro/utils/date_utils.dart';
+import 'package:fretes_go_freteiro/utils/globals_constants.dart';
 import 'package:geocoder/geocoder.dart';
 
 import 'item_class.dart';
@@ -28,6 +29,7 @@ class MoveClass {
   String userImage;
   String freteiroImage;
   String situacao;
+  String situacaoBackup;
 
   String dateSelected;
   String timeSelected;
@@ -45,7 +47,7 @@ class MoveClass {
 
 
   //MoveClass({this.itemsSelectedCart, this.ps, this.enderecoOrigem, this.enderecoDestino, this.latEnderecoOrigem, this.longEnderecoOrigem, this.latEnderecoDestino, this.longEnderecoDestino});
-  MoveClass({this.itemsSelectedCart, this.ps, this.enderecoOrigem, this.enderecoDestino, this.ajudantes, this.carro, this.latEnderecoOrigem, this.longEnderecoOrigem, this.latEnderecoDestino, this.longEnderecoDestino, this.preco, this.escada, this.lancesEscada, this.freteiroId, this.userId, this.dateSelected, this.timeSelected, this.nomeFreteiro, this.userImage, this.freteiroImage, this.situacao, this.idPedido});
+  MoveClass({this.itemsSelectedCart, this.ps, this.enderecoOrigem, this.enderecoDestino, this.ajudantes, this.carro, this.latEnderecoOrigem, this.longEnderecoOrigem, this.latEnderecoDestino, this.longEnderecoDestino, this.preco, this.escada, this.lancesEscada, this.freteiroId, this.userId, this.dateSelected, this.timeSelected, this.nomeFreteiro, this.userImage, this.freteiroImage, this.situacao, this.idPedido, this.situacaoBackup});
 
   MoveClass.empty();
 
@@ -165,6 +167,28 @@ class MoveClass {
   String formatSituationToHuman(String sit){
     String formatedSit="nao";
 
+    if(sit == GlobalsConstants.sitAguardando) {
+      formatedSit = "Aguardando sua confirmação";
+    } else if(sit == GlobalsConstants.sitAguardandoEspecifico) {
+      formatedSit = "Aguardando sua confirmação";
+    } else if(sit == GlobalsConstants.sitAguardandoFreteiro){
+      formatedSit = "Aguardando sua confirmação";
+    } else if(sit == GlobalsConstants.sitAccepted) {
+      formatedSit = 'Serviço agendado, aguardando pagamento';
+    } else if(sit == GlobalsConstants.sitPago){
+      formatedSit = 'Cliente já pagou';
+    } else if(sit == GlobalsConstants.sitTruckerFinished){
+      formatedSit = 'Finalizado: Aguardando cliente avaliar';
+    } else if(sit == GlobalsConstants.sitUserInformTruckerDidntMakeMove){
+      formatedSit = 'Mudança não realizada';
+    } else if(sit == GlobalsConstants.sitUserInformTruckerDidntFinishedMove){
+      formatedSit = 'Mudança não finalizada';
+    }  else if(sit == GlobalsConstants.sitUserFinished){
+      formatedSit = 'Finalizado. Avalie';
+    } else if(sit == GlobalsConstants.sitReschedule){
+      formatedSit = 'Data alterada. Confirme';
+    }
+    /*
     if(sit == "aguardando_freteiro"){
       formatedSit = "Aguardando sua confirmação";
     } else if(sit == 'accepted'){
@@ -172,6 +196,8 @@ class MoveClass {
     } else if(sit == 'trucker_finished'){
       formatedSit = 'Finalizado: Aguardando usuário';
     }
+
+     */
     return formatedSit;
   }
 
@@ -184,8 +210,8 @@ class MoveClass {
 
   DateTime formatMyDateToNotify(String originalDate, String time){
 
-    DateTime moveDate = DateUtils().convertDateFromString(originalDate);
-    moveDate = DateUtils().addMinutesAndHoursFromStringToAdate(moveDate, time);
+    DateTime moveDate = DateServices().convertDateFromString(originalDate);
+    moveDate = DateServices().addMinutesAndHoursFromStringToAdate(moveDate, time);
     return moveDate;
 
   }

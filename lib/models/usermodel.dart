@@ -1,3 +1,4 @@
+import 'package:fretes_go_freteiro/services/sharedPrefs_services.dart';
 import 'package:scoped_model/scoped_model.dart';
 
 class UserModel extends Model {
@@ -26,6 +27,8 @@ class UserModel extends Model {
   String _acountType='';
   String _bank='';
   String _cpfAcountOwner='';
+  bool _listed=false;
+  bool _banned=false;
 
   //UserModel({this.uid, this.fullName, this.email, this.userRole});
   //UserModel();
@@ -67,6 +70,7 @@ class UserModel extends Model {
 
   void updateApelido(String value) {
     _apelido = value;
+    SharedPrefsServices().saveApelido(value);
     notifyListeners();
   }
 
@@ -231,5 +235,15 @@ class UserModel extends Model {
   }
 
   get MoveIdCancelment=>_moveIdCanceled;
+  
+  void updateUserListed(bool value){
+    _listed = value;
+  }
+  get Listed => _listed;
+
+  void updateUserBanned(bool value){
+    _banned = value;
+  }
+  get Banned => _banned;
 
 }

@@ -7,8 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:fretes_go_freteiro/classes/avaliation_class.dart';
 import 'package:fretes_go_freteiro/classes/banishment_class.dart';
 import 'package:fretes_go_freteiro/classes/move_class.dart';
+import 'package:fretes_go_freteiro/models/cad_infos_model.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:fretes_go_freteiro/services/sharedPrefs_services.dart';
 import 'package:fretes_go_freteiro/utils/date_utils.dart';
 import 'package:fretes_go_freteiro/utils/shared_prefs_utils.dart';
 
@@ -28,6 +30,8 @@ class FirestoreServices {
   static final String bankPath = 'freteiros_bank';
   static final String historicPathUsers = 'historico_mudancas_users';
   static final String historicPathTrucker = 'historico_mudancas_truckers';
+  static final String locationPath = 'location';
+  static final String rememberTheLastSummer = 'historico_aval'; //quando o usuário apagar seu registro vamos guardar aqui
 
 
   Future<void> createNewUser(String name, String email, String uid) {
@@ -47,13 +51,67 @@ class FirestoreServices {
         .then((value) {
       userModel.updateFullName(name);
       print('user added');
+      _checkIfTheUserHasHistoric(uid);
     })
         .catchError((error) => print("Failed to add user: $error"));
   }
 
+  Future<void> checkIfTheUserIsCommingBack(String uid, String email){
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+
+          if (documentSnapshot.exists) {
+
+            //do nothing
+
+          } else {
+            createNewUser(null, email, uid); //recria os campos
+          }
+
+    });
+  }
+
+  Future<void> _checkIfTheUserHasHistoric(String uid){
+
+    bool _banido;
+    int _aval;
+    double _rate;
+
+    FirebaseFirestore.instance
+        .collection(rememberTheLastSummer)
+        .doc(uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+         _banido = documentSnapshot['banido'];
+          _aval = documentSnapshot['aval'];
+        _rate = documentSnapshot['rate'].toDouble();
+
+      }
+
+    }).then((_) {
+      //save previously data to user
+
+      CollectionReference userLocation = FirebaseFirestore.instance.collection(truckerPath);
+      return userLocation
+          .doc(uid)
+          .update({
+        'rate' : _rate,
+        'aval' : _aval,
+        'banido' : _banido,
+      });
+
+    });
+
+  }
+
   void getUserInfoFromCloudFirestore(UserModel userModel, @required VoidCallback userExists(), @required VoidCallback userNotReg()) {
 
-    String exists;
     FirebaseFirestore.instance
         .collection(truckerPath)
         .doc(userModel.Uid)
@@ -78,18 +136,109 @@ class FirestoreServices {
         .then((DocumentSnapshot documentSnapshot) {
       if (documentSnapshot.exists) {
         exists = documentSnapshot['all_info_done']??99;
+
+        if(exists==1 || exists==2 || exists==3 || exists==4) {
+          if (userModel.Apelido == '') {
+            userModel.updateApelido(documentSnapshot['apelido'] ?? '');
+            SharedPrefsUtils().updateAllInfoDone(exists);
+          }
+        }
+
+        if(exists==1){
+          //user só preencheu a primeira página
+          goToPage2();
+        } else if(exists == 2){
+          goToPage3();
+        } else if(exists == 3) {
+          goToPage4();
+        } else if(exists == 4){
+          //tudo está ok, fazer nada.
+      } else {
+          //user n fez nada, ir para a página inicial
+          goToPage1();
+        }
+      }
+    });
+  }
+
+  void getUserApelido(UserModel userModel) {
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(userModel.Uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        userModel.updateApelido(documentSnapshot['apelido'] ?? '');
+      }
+
+    });
+  }
+
+  void getUserCarTypeo(UserModel userModel) {
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(userModel.Uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        userModel.updateVehicle(documentSnapshot['vehicle'] ?? '');
+      }
+
+    });
+  }
+
+  void getUserListedAndBanned(UserModel userModel) {
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(userModel.Uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        userModel.updateUserListed(documentSnapshot['listed'] ?? false);
+        userModel.updateUserBanned(documentSnapshot['banido'] ?? false);
+        userModel.updateLatLoong(documentSnapshot['latlong'] ?? 0.0);
+        userModel.updatePlaca(documentSnapshot['placa'] ?? 'nao');
+      }
+
+    }).then((_) {
+      print(userModel.Banned);
+      print(userModel.Listed);
+      print('leu banido e lista');
+    });
+  }
+
+  Future<int> getUserInfoCheckWhatIsMissingWithReturnInt(String id) {
+
+    int exists;
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+        exists = documentSnapshot['all_info_done']??99;
+        return exists; //se retornar 99 é pq n existe
+        /*
         if(exists==1){
           //user só preencheu a primeira página
           goToPage2();
         } else if(exists == 2){
           goToPage3();
         } else if(exists == 3){
-        goToPage4();
-      } else {
+          goToPage4();
+        } else {
           //user n fez nada, ir para a página inicial
           goToPage1();
         }
+
+         */
+      } else {
+       return 99;
       }
+
     });
   }
 
@@ -124,21 +273,22 @@ class FirestoreServices {
   //METODOS DE CADASTRO APÓS O LOGIN - NOME, APELIDO, CNH E BANCO
   //metodo que salva a primeira parte das infos do freteiro
   Future<void> saveUserInfo(String uid, double latitude, double longitude, String _apelido, String _phone,
-      String _address, String uri, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
+      String _address, String uri, bool isUpdating, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
 
     CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
 
     double latlong = latitude+longitude;
-    if(latitude==null){
+    if(isUpdating==true){
       //esta updatando
       return users
           .doc(uid)
-          .set({
+          .update({
         'apelido': _apelido,
         'phone': _phone,
         'address': _address,
         'image' : uri,
+        'latlong' : latlong
       })
           .then((value) {
         onSucess();
@@ -222,11 +372,7 @@ class FirestoreServices {
   //metodo que salva a ultima parte das infos do freteiro, a parte do carro
   Future<void> saveUserCarInfo(String uid, String placa, File imageCar, String uri, String carro, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
-
     CollectionReference users = FirebaseFirestore.instance.collection(truckerPath);
-
-
-
 
     if(imageCar==null){
       //updatando
@@ -247,14 +393,13 @@ class FirestoreServices {
 
       return users
           .doc(uid)
-          .update({
+          .set({
         'vehicle' : carro,
         'vehicle_image' : uri,
         'placa' : placa,
         'all_info_done' : 3,
       })
           .then((value) {
-
             onSucess();
 
       })
@@ -262,6 +407,33 @@ class FirestoreServices {
 
 
     }
+
+  }
+
+  Future<void> loadUserCarInfo(CadInfosModel cadInfosModel, String id, VoidCallback callback()){
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        if(documentSnapshot.data().containsKey('vehicle')){
+          cadInfosModel.updateVehicle(documentSnapshot['vehicle']);
+          cadInfosModel.updateVehicleImageUrl(documentSnapshot['vehicle_image']);
+          //cadInfosModel.updateVehicleImageUrl(documentSnapshot['placa']);
+          cadInfosModel.updatePlaca(documentSnapshot['placa']);
+          callback();
+        } else {
+          //n existe
+        }
+
+
+      } else {
+        //n existe
+      }
+    });
 
   }
 
@@ -294,19 +466,21 @@ class FirestoreServices {
 
   }
 
-  Future<void> saveBankInfo(@required UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
+  Future<void> saveBankInfo(@required CadInfosModel cadInfosModel, String cpfOrCnpj, String uid, @required VoidCallback onSucess(), @required VoidCallback onFailure()){
 
+    print(uid);
     CollectionReference userLocation = FirebaseFirestore.instance.collection(bankPath);
     return userLocation
-        .doc(userModel.Uid)
-        .update({
-      'conta_nome' : userModel.NameAcountOwner,
-      'conta_agencia' : userModel.Agency,
-      'conta_conta' : userModel.Acount,
-      'conta_digito' : userModel.Digit,
-      'conta_tipo' : userModel.AcountType,
-      'conta_banco' : userModel.Bank,
-      'conta_cpf' : userModel.CpfAcountOwner,
+        .doc(uid)
+        .set({
+      'conta_nome' : cadInfosModel.nameController.text,
+      'conta_agencia' : cadInfosModel.agencyController.text,
+      'conta_conta' : cadInfosModel.accountController.text,
+      'conta_digito' : cadInfosModel.digitController.text,
+      'conta_tipo' : cadInfosModel.acountType,
+      'conta_banco' : cadInfosModel.bank,
+      'conta_cpf' : cpfOrCnpj,  //atenção: Para manter o campo como cpf, ele pode ser um CNPJ. Para verificar veja se tipo_doc é cpf ou cnpj.
+      'tipo_doc' : cadInfosModel.cpfOrCnpj,
     })
         .then((value) {
 
@@ -317,16 +491,47 @@ class FirestoreServices {
 
   }
 
-  Future<void> placeUserInSearch(bool isNew, UserModel userModel, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
+  Future<void> loadBankInfo(CadInfosModel cadInfosModel, String id, VoidCallback callback()){
+
+    FirebaseFirestore.instance
+        .collection(bankPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        if(documentSnapshot.data().containsKey('conta_nome')){
+          cadInfosModel.nameController.text = documentSnapshot['conta_nome'];
+          cadInfosModel.agencyController.text = documentSnapshot['conta_agencia'];
+          cadInfosModel.accountController.text = documentSnapshot['conta_conta'];
+          cadInfosModel.digitController.text = documentSnapshot['conta_digito'];
+          cadInfosModel.cpfController.text = documentSnapshot['conta_cpf'];
+          cadInfosModel.updateAcountType(documentSnapshot['conta_tipo']);
+          cadInfosModel.updateBank(documentSnapshot['conta_banco']);
+          callback();
+        } else {
+          //n existe
+        }
+
+
+      } else {
+        //n existe
+      }
+    });
+
+  }
+
+  Future<void> placeUserInSearch(bool isNew, String uid, @required VoidCallback onSucess(), @required VoidCallback onFailure()) async {
 
     CollectionReference placeForSearch = FirebaseFirestore.instance.collection('truckers');
-    await SharedPrefsUtils().loadPageOneInfo(userModel);
+    //await SharedPrefsUtils().loadPageOneInfo(userModel);
 
     placeForSearch
-        .doc(userModel.Uid)
+        .doc(uid)
         .update({
       'listed' : true,
       'banido' : false,
+      'all_info_done' : 99,
     }).then((value) {
 
       onSucess();
@@ -336,38 +541,142 @@ class FirestoreServices {
           onFailure();
     });
 
-    /*
-    CollectionReference placeForSearch = FirebaseFirestore.instance.collection(userModel.Vehicle);
+  }
 
-    await SharedPrefsUtils().loadPageOneInfo(userModel);
+  //AVALIACOES
 
-    if(isNew == true){
-      placeForSearch
-          .doc(userModel.Uid)
-          .set({
-        'aval' : 0.0,
-        'image' : userModel.Image,
-        'latlong' : userModel.LatLong,
-        'name' : userModel.Apelido,
-      }).then((value) => onSucess())
-          .catchError((onError) => onFailure());
 
-    } else {
 
-      //fazendo update
-      placeForSearch
-          .doc(userModel.Uid)
-          .update({
-        'image' : userModel.Image,
-        'latlong' : userModel.LatLong,
-        'name' : userModel.Apelido,
-      }).then((value) => onSucess())
-          .catchError((onError)=> onFailure());
 
-    }
-   */
+//metodos  da pagina de cad infos 1
+  Future<void> loadUserProfileImage(UserModel userModel, String id){
+
+    //AvaliationClass avaliationClassHere = avaliationClass;
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        userModel.updateImage(documentSnapshot['image']);
+
+      } else {
+        //nada a fazer
+      }
+    });
+
+
 
   }
+
+
+  Future<void> loadPageOneUserInfos(CadInfosModel cadInfosModel, String id, VoidCallback dataExists(), VoidCallback dataDontExists()){
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        if(documentSnapshot.data().containsKey('phone')){
+
+          print('exists');
+          cadInfosModel.updateApelido(documentSnapshot['apelido']);
+          cadInfosModel.updatephone(documentSnapshot['phone']);
+          cadInfosModel.updateaddress(documentSnapshot['address']);
+          cadInfosModel.updateLatLong(documentSnapshot['latlong']);
+          cadInfosModel.updateimage(documentSnapshot['image']);
+          dataExists();
+
+
+        } else {
+
+          print('dont exists');
+          dataDontExists();
+
+        }
+
+      }
+    });
+
+  }
+  /*
+  Future<void> loadPageOneUserInfos(CadInfosModel cadInfosModel, String id, VoidCallback onSucess()){
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        if(documentSnapshot.data().containsKey('apelido')){
+
+          print('exists');
+          cadInfosModel.updateApelido(documentSnapshot['apelido']);
+          cadInfosModel.updatephone(documentSnapshot['phone']);
+          cadInfosModel.updateaddress(documentSnapshot['address']);
+          cadInfosModel.updateLatLong(documentSnapshot['latlong']);
+          cadInfosModel.updateimage(documentSnapshot['image']);
+          onSucess();
+
+
+        } else {
+
+          print('dont exists');
+
+        }
+
+      }
+    });
+
+  }
+
+
+   */
+  Future<bool> loadSingleItemFromTrucker(String id, String field){
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(id)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+      if (documentSnapshot.exists) {
+
+        if(documentSnapshot.data().containsKey('apelido')){
+
+        }
+
+        String str = documentSnapshot[field].toString();
+        if(str=='null'){
+          return false;
+        } else {
+          return true;
+        }
+
+      } else {
+        return false;
+      }
+    });
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   //METODOS DE CADASTRO APÓS O LOGIN - NOME, APELIDO, CNH E BANCO
 
 
@@ -391,6 +700,25 @@ class FirestoreServices {
 
   }
 
+  Future<void> confirmJobAceptance2(UserModel userModel, String moveId,
+      @required VoidCallback onSucess(), @required VoidCallback onFail()){
+
+    CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
+
+    return users
+        .doc(moveId)
+        .update({
+      'situacao' : "accepted",
+      'id_freteiro' : userModel.Uid,
+      'nome_freteiro' : userModel.Apelido,
+      'placa' : userModel.Placa
+
+    }).then((value) {
+      onSucess();
+    }).catchError((error) => onFail());
+
+  }
+
   Future<void> confirmJobDeny(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
 
     CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
@@ -407,7 +735,7 @@ class FirestoreServices {
     }).catchError((error) => onFail());
   }
 
-  Future<void> truckerQuitBecauseOfOutageOfPayment(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
+  Future<void> truckerQuitWithoutPunishiment_userFault(String moveId, @required VoidCallback onSucess(), @required VoidCallback onFail()){
 
     CollectionReference users = FirebaseFirestore.instance.collection(agendamentosPath);
 
@@ -447,8 +775,8 @@ class FirestoreServices {
     path.doc(truckerId).set({
       'trucker' : truckerId,
       'motivo' : motivo,
-      'data' : DateUtils().giveMeTheDateToday(),
-      'hora' : DateUtils().giveMeTheTimeNow(),
+      'data' : DateServices().giveMeTheDateToday(),
+      'hora' : DateServices().giveMeTheTimeNow(),
 
     });
 
@@ -465,8 +793,8 @@ class FirestoreServices {
     path.doc(truckerId).set({
       'trucker' : truckerId,
       'motivo' : motivo,
-      'data' : DateUtils().giveMeTheDateToday(),
-      'hora' : DateUtils().giveMeTheTimeNow(),
+      'data' : DateServices().giveMeTheDateToday(),
+      'hora' : DateServices().giveMeTheTimeNow(),
       'tempo_banimento' : tempoBanimento
 
     }).then((value) { banish(truckerId); });
@@ -655,6 +983,35 @@ class FirestoreServices {
 
   }
 
+  Future<void> loadMoveSituationBackup(String idPedido ,VoidCallback onSucess(), VoidCallback onFail()){
+
+    FirebaseFirestore.instance
+        .collection(agendamentosPath)
+        .doc(idPedido)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) async {
+      if (documentSnapshot.exists) {
+
+        String sit = documentSnapshot['situacao_backup'];
+
+
+
+        void _onSucess(){
+          onSucess();
+        }
+
+        void _onFail(){
+          onFail();
+        }
+        FirestoreServices().updateMoveSituation(sit, idPedido, (){_onSucess();}, (){_onFail();});
+
+      } else {
+        onFail();
+      }
+    });
+
+  }
+
   Future<void> updateMoveSituation(String newSituation, String moveId, [@required VoidCallback onSucess(), @required VoidCallback onFail()]){
 
     CollectionReference update = FirebaseFirestore.instance.collection(agendamentosPath);
@@ -705,8 +1062,8 @@ class FirestoreServices {
       'preco' : moveClass.preco,
       'origem' : moveClass.enderecoOrigem,
       'destino' : moveClass.enderecoDestino,
-      'data' : DateUtils().giveMeTheDateToday(),
-      'hora' : DateUtils().giveMeTheTimeNow(),
+      'data' : DateServices().giveMeTheDateToday(),
+      'hora' : DateServices().giveMeTheTimeNow(),
 
     }).then((value) => createHistoricOfMovesToTrucker(moveClass));
 
@@ -715,8 +1072,21 @@ class FirestoreServices {
 
   Future<void> createHistoricOfMovesToTrucker(MoveClass moveClass){
 
-    CollectionReference history = FirebaseFirestore.instance.collection(historicPathTrucker);
+    print('moveclass');
+    print(moveClass);
 
+    FirebaseFirestore.instance.collection(historicPathTrucker).doc(moveClass.freteiroId).collection('historico').add({
+      'user' : moveClass.userId,
+      'freteiro' : moveClass.freteiroId,
+      'preco' : moveClass.preco,
+      'origem' : moveClass.enderecoOrigem,
+      'destino' : moveClass.enderecoDestino,
+      'data' : DateServices().giveMeTheDateToday(),
+      'hora' : DateServices().giveMeTheTimeNow(),
+    });
+
+    /*
+    CollectionReference history = FirebaseFirestore.instance.collection(historicPathTrucker);
     //cria historico do trucker
     history.doc(moveClass.freteiroId).set({
       'user' : moveClass.idPedido,
@@ -728,6 +1098,8 @@ class FirestoreServices {
       'hora' : DateUtils().giveMeTheTimeNow(),
 
     });
+
+     */
 
   }
 
@@ -767,12 +1139,12 @@ class FirestoreServices {
 
 
 
-  Future<void> saveLastUserLocation(String moveId, double latitude, double longitude){
+  Future<void> saveLastUserLocation(String truckerId, double latitude, double longitude){
 
-    CollectionReference userLocation = FirebaseFirestore.instance.collection(agendamentosPath);
+    CollectionReference userLocation = FirebaseFirestore.instance.collection(locationPath);
     return userLocation
-        .doc(moveId)
-        .update({
+        .doc(truckerId)
+        .set({
       'lastTrucker_lat' : latitude,
       'lastTrucker_long' : longitude,
     });
@@ -820,10 +1192,64 @@ class FirestoreServices {
     });
 
   }
-  //AVALIACOES
+
+  Future<void> deleteUserData(String uid, @required VoidCallback onSucess()){
+
+    //3 passos:
+    //primeiro salva as infos de nota e avaliação do cara num node backup
+    //depois apaga as infos do node
+    //depois apaga as infos de banco em bank_infos
+
+    int _aval;
+    double _rate;
+    bool _banido;
+
+    FirebaseFirestore.instance
+        .collection(truckerPath)
+        .doc(uid)
+        .get()
+        .then((DocumentSnapshot documentSnapshot) {
+
+          if(documentSnapshot.exists){
+            _aval = documentSnapshot['aval']??0;
+            _rate = documentSnapshot['rate']??0.toDouble();
+            _banido = documentSnapshot['banido']??false;
+
+          } else {
+            //a info ja foi apagada, deu erro e o user tá tentando novamente
+          }
 
 
+    }).then((_) {
 
+
+      CollectionReference userLocation = FirebaseFirestore.instance.collection(truckerPath);
+      return userLocation
+          .doc(uid).delete()
+          .then((_) {
+
+        CollectionReference bankData = FirebaseFirestore.instance.collection(bankPath);
+        return bankData.doc(uid).delete();
+      }).then((_) {
+
+        CollectionReference backup = FirebaseFirestore.instance.collection(rememberTheLastSummer);
+        return backup
+            .doc(uid)
+            .set({
+          'rate' : _rate,
+          'aval' : _aval,
+          'banido' : _banido,
+        });
+
+      })
+      .then((_) {
+        onSucess();
+      });
+
+
+    });
+
+  }
 
 }
 

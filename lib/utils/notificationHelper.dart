@@ -21,8 +21,8 @@ Future<void> initNotifications(
         didReceiveLocalNotificationSubject.add(ReminderNotification(
             id: id, title: title, body: body, payload: payload));
       });
-  var initializationSettings = InitializationSettings(
-      initializationSettingsAndroid, initializationSettingsIOS);
+  var initializationSettings = InitializationSettings(android:
+      initializationSettingsAndroid, iOS: initializationSettingsIOS);
   await flutterLocalNotificationsPlugin.initialize(initializationSettings,
       onSelectNotification: (String payload) async {
         if (payload != null) {

@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 //needs to add date_format: ^1.0.8 to pubspec.yaml
 
-class DateUtils {
+class DateServices {
 
   String convertStringFromDate(DateTime strDate) {
     final newDate = formatDate(strDate, [dd, '/', mm, '/', yyyy]);
@@ -13,6 +13,17 @@ class DateUtils {
 
   DateTime convertDateFromString(String strDate){
     DateTime todayDate = DateTime.parse(strDate.split('/').reversed.join());
+    return todayDate;
+  }
+
+  DateTime convertDateAndTimeFromString(String strDate, String strTime){
+    DateTime todayDate = DateTime.parse(strDate.split('/').reversed.join());
+    String hour = strTime.split(':').first;
+    print('hour'+hour);
+    String minute = strTime.split(':').last;
+    print('minute'+minute);
+    todayDate = DateTime(todayDate.year, todayDate.month, todayDate.day, int.parse(hour), int.parse(minute), 0, 0, 0);
+    print('data toda somada'+todayDate.toString());
     return todayDate;
   }
 
@@ -56,6 +67,18 @@ class DateUtils {
     } else {
       return true; //data informada é menor do que hoje
     }
+
+
+  }
+
+  int howMuchDaysThisDateIsBiggerThanTodayInDays(String date){
+
+    var dateFormatted = convertDateFromString(date);
+    var today = DateTime.now();
+
+    final difference = today.difference(dateFormatted).inDays;
+
+    return difference;
 
 
   }

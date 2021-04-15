@@ -1,3 +1,4 @@
+import 'package:fretes_go_freteiro/models/cad_infos_model.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,6 +56,23 @@ class SharedPrefsUtils {
 
   }
 
+  Future<void> savePageOneInfoNew(CadInfosModel cadInfosModel, int pageDone) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString('image', cadInfosModel.image);
+    await prefs.setString('apelido', cadInfosModel.apelido);
+    await prefs.setDouble('latlong', cadInfosModel.latlong);
+    await prefs.setString('phone', cadInfosModel.phone);
+    await prefs.setString('address', cadInfosModel.addressFound);
+    //se ele já tiver preenchido outras páginas pageDone será 2, ou 3...isto significa que ele só está atualizando, então tem que manter o pageDone na página que está.
+    if(pageDone<1){
+      await prefs.setInt('all_info_done', 1);
+    }
+
+
+  }
+
   //para testes apenas
   Future<void> deletePageOneInfo() async {
 
@@ -87,6 +105,45 @@ class SharedPrefsUtils {
 
   }
 
+  Future<String> loadIndividualInfo(String value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String returnstr = prefs.getString(value).toString();
+    return returnstr;
+  }
+
+  Future<int> loadIndividualInfoInt(String value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int returnint = prefs.getInt(value);
+    return returnint;
+  }
+
+  Future<double> loadIndividualInfoDoble(String value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    double returndouble = prefs.getDouble(value);
+    return returndouble;
+  }
+
+  Future<void> saveIndividualInfo(String field, String value) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(field, value);
+
+  }
+
+  Future<void> saveIndividualInfoInt(String field, int value) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(field, value);
+
+  }
+
+  Future<void> saveIndividualDouble(String field, double value) async {
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(field, value);
+
+  }
+
   Future<UserModel> loadPageOneInfoWithReturn(UserModel userModel) async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -107,7 +164,7 @@ class SharedPrefsUtils {
   }
 
   //pagina 2 só tem a CNH. Como o user nunca vai precisa acessa-la, n vamos salvar no sharedprefs
-  Future<void> savePageTwoInfo(UserModel userModel) async {
+  Future<void> savePageTwoInfo() async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -115,14 +172,20 @@ class SharedPrefsUtils {
 
   }
 
-  Future<void> savePageThreeInfo(UserModel userModel) async {
+  Future<void> savePageThreeInfo(CadInfosModel cadInfosModel) async {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('vehicle', userModel.Vehicle);
-    await prefs.setString('vehicle_image', userModel.VehicleImage);
-    await prefs.setString('vehicle_placa', userModel.Placa);
-    await prefs.setInt('all_info_done', 3);
+    await prefs.setString('vehicle', cadInfosModel.vehicle);
+    await prefs.setString('vehicle_image', cadInfosModel.vehicleImageUrl);
+    await prefs.setString('vehicle_placa', cadInfosModel.placa);
+
+    int pageDone = (prefs.getInt('all_info_done'))??2;
+    //se for maior é porque esta atualiando
+    if(pageDone<3){
+      await prefs.setInt('all_info_done', 3);
+    }
+
 
   }
 
@@ -183,8 +246,8 @@ class SharedPrefsUtils {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    int value = (prefs.getInt('all_info_done'));
-    if(value!=null){
+    int value = (prefs.getInt('all_info_done')??99); //99 é o valor padrão para não ter nada gravado
+    if(value!=99){
       return value;
     } else {
       return 99;

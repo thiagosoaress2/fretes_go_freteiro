@@ -2,6 +2,9 @@ import 'package:camera/camera.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fretes_go_freteiro/models/cad_infos_model.dart';
+import 'package:fretes_go_freteiro/models/home_model.dart';
 import 'package:fretes_go_freteiro/models/usermodel.dart';
 import 'package:fretes_go_freteiro/pages/home_page.dart';
 import 'package:fretes_go_freteiro/utils/notificationHelper.dart';
@@ -86,6 +89,8 @@ Widget myStartPage(){
 
   NewAuthService newAuthService = NewAuthService();
   UserModel userModel = UserModel();
+  HomeModel homeModel = HomeModel();
+  CadInfosModel cadInfoModel = CadInfosModel();
 
   return ScopedModel<NewAuthService>(
       model: newAuthService,
@@ -93,14 +98,29 @@ Widget myStartPage(){
       child: ScopedModel<UserModel>(
         model: userModel,
 
-        child: MaterialApp(
-          title: 'Fretes Go',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            visualDensity: VisualDensity.adaptivePlatformDensity,
+        child: ScopedModel<HomeModel>(
+          model: homeModel,
+
+          child: ScopedModel<CadInfosModel>(
+            model: cadInfoModel,
+
+            child: MaterialApp(
+
+              localizationsDelegates: [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate
+              ],
+              supportedLocales: [const Locale('pt', 'BR')],
+
+              title: 'Fretes Go',
+              theme: ThemeData(
+                primarySwatch: Colors.blue,
+                visualDensity: VisualDensity.adaptivePlatformDensity,
+              ),
+              //home: HomePage(),
+              home: HomePage(), //inicie suas páginas aqui
+            ),
           ),
-          //home: HomePage(),
-          home: HomePage(), //inicie suas páginas aqui
         ),
       ),
   );
